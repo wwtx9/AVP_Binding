@@ -1,0 +1,9 @@
+examples/EuRoC/euroc
+vocabulary/ORBvoc.txt
+build/
+*~
+lib/
+cmake-build-debug/
+*.ply
+tests/data/
+

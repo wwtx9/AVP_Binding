@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CMakeRunConfigurationManager" shouldGenerate="true" shouldDeleteObsolete="true">
+    <generated>
+      <config projectName="AVP_Binding" targetName="AVP_Binding" />
+    </generated>
+  </component>
+  <component name="CMakeSettings">
+    <configurations>
+      <configuration PROFILE_NAME="Debug" CONFIG_NAME="Debug" ENABLED="true" />
+    </configurations>
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="a0de68a1-d0a8-4512-97bd-37ddb274d985" name="Default Changelist" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/include/SparsePipeline.h" beforeDir="false" afterPath="$PROJECT_DIR$/include/SparsePipeline.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/include/System.h" beforeDir="false" afterPath="$PROJECT_DIR$/include/System.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/app/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/CMakeLists.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/app/Frame.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/Frame.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/app/SparsePipeline.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/SparsePipeline.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/app/System.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/System.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/bindings/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/src/bindings/CMakeLists.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/bindings/bindings.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/bindings/bindings.cpp" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ClangdSettings">
+    <option name="formatViaClangd" value="false" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="CMakeLists.txt" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="OCFindUsagesOptions" text="true" ivars="false" properties="true" derivedClasses="false" />
+  <component name="ProjectId" id="1joAtEU6O7ZJm2McBxptj0RUrLt" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">
+    <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
+    <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
+    <property name="WebServerToolWindowFactoryState" value="false" />
+    <property name="cf.first.check.clang-format" value="false" />
+    <property name="node.js.detected.package.eslint" value="true" />
+    <property name="node.js.detected.package.tslint" value="true" />
+    <property name="node.js.path.for.package.eslint" value="project" />
+    <property name="node.js.path.for.package.tslint" value="project" />
+    <property name="node.js.selected.package.eslint" value="(autodetect)" />
+    <property name="node.js.selected.package.tslint" value="(autodetect)" />
+    <property name="nodejs_package_manager_path" value="npm" />
+  </component>
+  <component name="RunManager" selected="CMake Application.stereo_kitti">
+    <configuration default="true" type="CLionExternalRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" PASS_PARENT_ENVS_2="true">
+      <method v="2">
+        <option name="CLION.EXTERNAL.BUILD" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="AVP" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS="Examples/KITTI/KITTI.yaml $PROJECT_DIR$/../dataset/KITTI/data_scene_flow/training/image_2 $PROJECT_DIR$/../dataset/KITTI/data_scene_flow/training/image_3 Examples/KITTI/times.txt" REDIRECT_INPUT="false" ELEVATE="false" WORKING_DIR="file://$PROJECT_DIR$" PASS_PARENT_ENVS_2="true" PROJECT_NAME="AVP_Binding" TARGET_NAME="AVP" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="AVP_Binding" RUN_TARGET_NAME="euroc">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="AVP_Binding" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="AVP_Binding" TARGET_NAME="AVP_Binding" CONFIG_NAME="Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration default="true" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" PASS_PARENT_ENVS_2="true">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="euroc" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS="Examples/EuRoC/EuRoC.yaml $PROJECT_DIR$/../dataset/euroc/mav0/cam0/data $PROJECT_DIR$/../dataset/euroc/mav0/cam1/data Examples/EuRoC/EuRoC_TimeStamps/MH01.txt" REDIRECT_INPUT="false" ELEVATE="false" WORKING_DIR="file://$PROJECT_DIR$" PASS_PARENT_ENVS_2="true" PROJECT_NAME="AVP_Binding" TARGET_NAME="euroc" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="AVP_Binding" RUN_TARGET_NAME="euroc">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="kitti" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS="Examples/KITTI/KITTI.yaml $PROJECT_DIR$/../dataset/KITTI/data_scene_flow/training/image_2 $PROJECT_DIR$/../dataset/KITTI/data_scene_flow/training/image_3 Examples/KITTI/times.txt" REDIRECT_INPUT="false" ELEVATE="false" WORKING_DIR="file://$PROJECT_DIR$" PASS_PARENT_ENVS_2="true" PROJECT_NAME="AVP_Binding" TARGET_NAME="kitti" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="AVP_Binding" RUN_TARGET_NAME="kitti">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="stereo_kitti" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS="examples/KITTI/KITTI00-02.yaml $USER_HOME$/Downloads/Datasets/KItti/data_odometry_gray/dataset/sequences/00" REDIRECT_INPUT="false" ELEVATE="false" WORKING_DIR="file://$PROJECT_DIR$" PASS_PARENT_ENVS_2="true" PROJECT_NAME="AVP_Binding" TARGET_NAME="stereo_kitti" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="AVP_Binding" RUN_TARGET_NAME="stereo_kitti">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <list>
+      <item itemvalue="CMake Application.AVP_Binding" />
+      <item itemvalue="CMake Application.AVP" />
+      <item itemvalue="CMake Application.euroc" />
+      <item itemvalue="CMake Application.kitti" />
+      <item itemvalue="CMake Application.stereo_kitti" />
+    </list>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="SvnConfiguration">
+    <configuration />
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="a0de68a1-d0a8-4512-97bd-37ddb274d985" name="Default Changelist" comment="" />
+      <created>1604460284746</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1604460284746</updated>
+      <workItem from="1604460293103" duration="12505000" />
+      <workItem from="1605060317875" duration="20318000" />
+      <workItem from="1605730897721" duration="3525000" />
+      <workItem from="1611177122498" duration="1697000" />
+      <workItem from="1611257920403" duration="1781000" />
+      <workItem from="1611553453622" duration="599000" />
+      <workItem from="1611631164893" duration="6000" />
+      <workItem from="1612213011325" duration="1331000" />
+      <workItem from="1612214773007" duration="1000" />
+      <workItem from="1612318701501" duration="35000" />
+      <workItem from="1612318814100" duration="12624000" />
+      <workItem from="1612370328043" duration="2733000" />
+      <workItem from="1612374492522" duration="5251000" />
+      <workItem from="1612406185810" duration="3467000" />
+      <workItem from="1612411158302" duration="4827000" />
+      <workItem from="1612654532269" duration="10508000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+    <option name="oldMeFiltersMigrated" value="true" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
+          <url>file://$PROJECT_DIR$/Examples/EuRoC/euroc.cpp</url>
+          <line>35</line>
+          <option name="timeStamp" value="2" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
+  </component>
+</project>
