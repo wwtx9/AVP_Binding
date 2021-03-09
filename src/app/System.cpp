@@ -22,8 +22,8 @@ namespace AVP {
 
     void System::ProcessingStereo(py::array_t<unsigned char>&imLeftpy, py::array_t<unsigned char>&imRightpy, const double &timestamp)
     {
-        cv::Mat imLeft = numpy_uint8_1c_to_cv_mat(imLeftpy);
-        cv::Mat imRight = numpy_uint8_1c_to_cv_mat(imRightpy);
+        cv::Mat imLeft = numpy_uint8_3c_to_cv_mat(imLeftpy);
+        cv::Mat imRight = numpy_uint8_3c_to_cv_mat(imRightpy);
         mpSparsePipline->GrabImageStereo(imLeft, imRight, timestamp);
     }
 

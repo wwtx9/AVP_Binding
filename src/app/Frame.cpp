@@ -279,6 +279,20 @@ void Frame::ComputeStereoMatches()
         }
     }
 
+    mvKPs.resize(N);
+    for(int iL = 0; iL < N; iL++)
+    {
+        const cv::KeyPoint &kpL = mvKeys[iL];
+        const int &levelL = kpL.octave;
+        const float &vL = kpL.pt.y;
+        const float &uL = kpL.pt.x;
+
+        mvKPs[iL].resize(3);
+        mvKPs[iL][0] = uL;
+        mvKPs[iL][1] = vL;
+        mvKPs[iL][2] = levelL;
+    }
+
 }
 
 int Frame::DescriptorDistance(const cv::Mat &a, const cv::Mat &b)

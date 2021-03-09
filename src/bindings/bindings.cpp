@@ -22,7 +22,9 @@ namespace AVP{
                 .def("SelectActiveKeyPoint", &SparsePipline::SelectActiveKeyPoint)
                 .def("GradientBasedOnNextBestTargetLocation", &SparsePipline::GradientBasedOnNextBestTargetLocation)
                 .def("Gradient", &SparsePipline::Gradient)
-                .def("WritePTCloud", &SparsePipline::WritePTCloud);
+                .def("GradientofCameraTranslation", &SparsePipline::GradientofCameraTranslation)
+                .def("WritePTCloud", &SparsePipline::WritePTCloud)
+                .def_readwrite("mCurrentFrame", &SparsePipline::mCurrentFrame);
 
 
         //Frame
@@ -37,11 +39,14 @@ namespace AVP{
                 .def("ComputeStereoMatches", &Frame::ComputeStereoMatches)
                 .def("DescriptorDistance", &Frame::DescriptorDistance)
                 .def("SetPose", &Frame::SetPose)
-                .def("UpdatePoseMatrices", &Frame::UpdatePoseMatrices);
+                .def("UpdatePoseMatrices", &Frame::UpdatePoseMatrices)
+                .def_readwrite("mvKPs", &Frame::mvKPs)
+                .def_readwrite("mvuRight", &Frame::mvuRight);
 
         py::class_<System>(m, "System")
                 .def(py::init<const string &>())
                 .def("testEigen", &System::testEigen)
-                .def("ProcessingStereo", &System::ProcessingStereo, py::arg("imLeft"), py::arg("imRight"), py::arg("timestamp"));
+                .def("ProcessingStereo", &System::ProcessingStereo, py::arg("imLeft"), py::arg("imRight"), py::arg("timestamp"))
+                .def_readwrite("mpSparsePipline", &System::mpSparsePipline);
     }
 }

@@ -130,120 +130,120 @@ void SparsePipline::GrabImageStereo(const cv::Mat &imRectLeft, const cv::Mat &im
 
     cout << "No t. "<< setw(20)<<setprecision(9)<<setiosflags(ios::fixed)<<timestamp<<endl;
 
-    vector<Point<float>> vPoints;
-    vector<float> vDepth;
+//     vector<Point<float>> vPoints;
+//     vector<float> vDepth;
 
-    //SLAM method
-    Eigen::Matrix4d currentPose = Track();
-    mRwc = currentPose.block<3,3>(0,0);
-    mtwc = currentPose.block<3,1>(0,3);
+//     //SLAM method
+//     Eigen::Matrix4d currentPose = Track();
+//     mRwc = currentPose.block<3,3>(0,0);
+//     mtwc = currentPose.block<3,1>(0,3);
 
-    //Step 2: Apply Delaunay triangulation on the keypoints
-    DelaunayTriangulation(vPoints, vDepth);
+//     //Step 2: Apply Delaunay triangulation on the keypoints
+//     DelaunayTriangulation(vPoints, vDepth);
 
-    // Step 3: Select as the active keypoint the one with smallest expected reconstruction error
-    int activekpIndex = SelectActiveKeyPoint();
-    cout<<activekpIndex<<endl;
-    //Step 4: Compute the NBV for the active keypoint
+//     // Step 3: Select as the active keypoint the one with smallest expected reconstruction error
+//     int activekpIndex = SelectActiveKeyPoint();
+//     cout<<activekpIndex<<endl;
+//     //Step 4: Compute the NBV for the active keypoint
 
-    //Step 4.1 Determine the next best target location in the relative frame
-    //Eigen::Vector3d NextBestTargetLocation(Eigen::Vector3d &p_k, Eigen::Matrix3d &U_obs, Eigen::Matrix3d &U_prior);
-
-
-    vector<pair<float, int> > vDepthIdx;
-    vDepthIdx.reserve(mCurrentFrame.N);
-    for(int iL = 0; iL < mCurrentFrame.N; iL++)
-    {
-        if(mCurrentFrame.mvDepth[iL]>0)
-            vDepthIdx.push_back({mCurrentFrame.mvDepth[iL], iL});
-    }
-    sort(vDepthIdx.begin(), vDepthIdx.end(),[](const pair<float, int>  &a, const pair<float, int>  &b){return a.first< b.first;});
-
-    cv::Mat im, im2;
-    imRectLeft.copyTo(im);
-    imRectRight.copyTo(im2);
-    cvtColor(im, im, CV_GRAY2RGB);
-    cvtColor(im2, im2, CV_GRAY2RGB);
-
-    const float r = 5;
+//     //Step 4.1 Determine the next best target location in the relative frame
+//     //Eigen::Vector3d NextBestTargetLocation(Eigen::Vector3d &p_k, Eigen::Matrix3d &U_obs, Eigen::Matrix3d &U_prior);
 
 
-    //end
-    for(int i = 0; i < vDepthIdx.size(); i++)
-    {
-        if(vDepthIdx[i].second == activekpIndex)
-        {
-            cv::Point2f pt1,pt2; //float
-            pt1.x=mCurrentFrame.mvKeysUn[vDepthIdx[i].second].pt.x-r;
-            pt1.y=mCurrentFrame.mvKeysUn[vDepthIdx[i].second].pt.y-r;
-            pt2.x=mCurrentFrame.mvKeysUn[vDepthIdx[i].second].pt.x+r;
-            pt2.y=mCurrentFrame.mvKeysUn[vDepthIdx[i].second].pt.y+r;
+//     vector<pair<float, int> > vDepthIdx;
+//     vDepthIdx.reserve(mCurrentFrame.N);
+//     for(int iL = 0; iL < mCurrentFrame.N; iL++)
+//     {
+//         if(mCurrentFrame.mvDepth[iL]>0)
+//             vDepthIdx.push_back({mCurrentFrame.mvDepth[iL], iL});
+//     }
+//     sort(vDepthIdx.begin(), vDepthIdx.end(),[](const pair<float, int>  &a, const pair<float, int>  &b){return a.first< b.first;});
 
-            cout<<"active keypoint depth (other color): "<< vDepthIdx[i].first<<endl;
-            cv::rectangle(im,pt1,pt2,cv::Scalar(120,120,120)); // green close
-            cv::circle(im,mCurrentFrame.mvKeysUn[vDepthIdx[i].second].pt,2,cv::Scalar(120,120,120),-1);
+//     cv::Mat im, im2;
+//     imRectLeft.copyTo(im);
+//     imRectRight.copyTo(im2);
+//     cvtColor(im, im, CV_GRAY2RGB);
+//     cvtColor(im2, im2, CV_GRAY2RGB);
 
-        }
-
-        if (i==0 || i == vDepthIdx.size()/2 || i == vDepthIdx.size()-1){
-            cv::Point2f pt1,pt2;
-            pt1.x=mCurrentFrame.mvKeysUn[vDepthIdx[i].second].pt.x-r;
-            pt1.y=mCurrentFrame.mvKeysUn[vDepthIdx[i].second].pt.y-r;
-            pt2.x=mCurrentFrame.mvKeysUn[vDepthIdx[i].second].pt.x+r;
-            pt2.y=mCurrentFrame.mvKeysUn[vDepthIdx[i].second].pt.y+r;
-
-            //cv::Point2f pt1R,pt2R;
-            double dispar = mCurrentFrame.mbf/vDepthIdx[i].first;
-            //pt1R.x=mCurrentFrame.mvKeysUn[vDepthIdx[i].second].pt.x-dispar-r;
-            //pt1R.y=mCurrentFrame.mvKeysUn[vDepthIdx[i].second].pt.y-r;
-            //pt2R.x=mCurrentFrame.mvKeysUn[vDepthIdx[i].second].pt.x-dispar+r;
-            //pt2R.y=mCurrentFrame.mvKeysUn[vDepthIdx[i].second].pt.y+r;
-            cv::Point2f cur(cv::Point2f(mCurrentFrame.mvKeysUn[vDepthIdx[i].second].pt.x-dispar, mCurrentFrame.mvKeysUn[vDepthIdx[i].second].pt.y));
-
-            if (i == 0){
-                //cout<<"close dispar: "<< mCurrentFrame.mbf/vDepthIdx[i].first<<endl;
-                cout<<"close depth (green): "<< vDepthIdx[i].first<<endl;
-                cv::rectangle(im,pt1,pt2,cv::Scalar(0,255,0)); // green close
-                cv::circle(im,mCurrentFrame.mvKeysUn[vDepthIdx[i].second].pt,2,cv::Scalar(0,255,0),-1);
-
-                //cv::rectangle(im2,pt1R,pt2R,cv::Scalar(0,255,0)); // green close
-                //cv::circle(im2,cur,2,cv::Scalar(0,255,0),-1);
-
-            } else if (i == vDepthIdx.size()/2){
-                //cout<<"between dispar: "<< mCurrentFrame.mbf/vDepthIdx[i].first<<endl;
-                cout<<"between depth (blue): "<< vDepthIdx[i].first<<endl;
-                cv::rectangle(im,pt1,pt2,cv::Scalar(255,0,0));   // blue
-                cv::circle(im,mCurrentFrame.mvKeysUn[vDepthIdx[i].second].pt,2,cv::Scalar(255,0,0),-1);
-
-                //cv::rectangle(im2,pt1R,pt2R,cv::Scalar(255,0,0));   // blue
-                //cv::circle(im2,cur,2,cv::Scalar(255,0,0),-1);
-            } else {
-                //cout<<"far dispar: "<< mCurrentFrame.mbf/vDepthIdx[i].first<<endl;
-                cout<<"far depth (red): "<< vDepthIdx[i].first<<endl;
-                cv::rectangle(im,pt1,pt2,cv::Scalar(0,0,255));   // red far
-                cv::circle(im,mCurrentFrame.mvKeysUn[vDepthIdx[i].second].pt,2,cv::Scalar(0,0,255),-1);
-
-                //cv::rectangle(im2,pt1R,pt2R,cv::Scalar(0,0,255));   // red far
-                //cv::circle(im2,cur,2,cv::Scalar(0,0,255),-1);
-
-            }
+//     const float r = 5;
 
 
-        }
-    }
+//     //end
+//     for(int i = 0; i < vDepthIdx.size(); i++)
+//     {
+//         if(vDepthIdx[i].second == activekpIndex)
+//         {
+//             cv::Point2f pt1,pt2; //float
+//             pt1.x=mCurrentFrame.mvKeysUn[vDepthIdx[i].second].pt.x-r;
+//             pt1.y=mCurrentFrame.mvKeysUn[vDepthIdx[i].second].pt.y-r;
+//             pt2.x=mCurrentFrame.mvKeysUn[vDepthIdx[i].second].pt.x+r;
+//             pt2.y=mCurrentFrame.mvKeysUn[vDepthIdx[i].second].pt.y+r;
 
-//    cv::Point2f pt1,pt2;
-//
-//    pt1.x=mCurrentFrame.mvKeysUn[activekpIndex].pt.x-r;
-//    pt1.y=mCurrentFrame.mvKeysUn[activekpIndex].pt.y-r;
-//    pt2.x=mCurrentFrame.mvKeysUn[activekpIndex].pt.x+r;
-//    pt2.y=mCurrentFrame.mvKeysUn[activekpIndex].pt.y+r;
-//    cout<<"activekpIndex: "<< activekpIndex<<endl;
-//    cout<<"Depth of this kp: "<<mCurrentFrame.mvDepth[activekpIndex]<<endl;
-//    cv::rectangle(im,pt1,pt2,cv::Scalar(0,255,0));
-//    cv::circle(im,mCurrentFrame.mvKeysUn[activekpIndex].pt,2,cv::Scalar(0,255,0),-1);
-    cout<<"activekp index: "<<activekpIndex<<", close kp index: "<<vDepthIdx[0].second<<endl;
-    //cv::imshow("AVP: Current Frame ", im);
+//             cout<<"active keypoint depth (other color): "<< vDepthIdx[i].first<<endl;
+//             cv::rectangle(im,pt1,pt2,cv::Scalar(120,120,120)); // green close
+//             cv::circle(im,mCurrentFrame.mvKeysUn[vDepthIdx[i].second].pt,2,cv::Scalar(120,120,120),-1);
+
+//         }
+
+//         if (i==0 || i == vDepthIdx.size()/2 || i == vDepthIdx.size()-1){
+//             cv::Point2f pt1,pt2;
+//             pt1.x=mCurrentFrame.mvKeysUn[vDepthIdx[i].second].pt.x-r;
+//             pt1.y=mCurrentFrame.mvKeysUn[vDepthIdx[i].second].pt.y-r;
+//             pt2.x=mCurrentFrame.mvKeysUn[vDepthIdx[i].second].pt.x+r;
+//             pt2.y=mCurrentFrame.mvKeysUn[vDepthIdx[i].second].pt.y+r;
+
+//             //cv::Point2f pt1R,pt2R;
+//             double dispar = mCurrentFrame.mbf/vDepthIdx[i].first;
+//             //pt1R.x=mCurrentFrame.mvKeysUn[vDepthIdx[i].second].pt.x-dispar-r;
+//             //pt1R.y=mCurrentFrame.mvKeysUn[vDepthIdx[i].second].pt.y-r;
+//             //pt2R.x=mCurrentFrame.mvKeysUn[vDepthIdx[i].second].pt.x-dispar+r;
+//             //pt2R.y=mCurrentFrame.mvKeysUn[vDepthIdx[i].second].pt.y+r;
+//             cv::Point2f cur(cv::Point2f(mCurrentFrame.mvKeysUn[vDepthIdx[i].second].pt.x-dispar, mCurrentFrame.mvKeysUn[vDepthIdx[i].second].pt.y));
+
+//             if (i == 0){
+//                 //cout<<"close dispar: "<< mCurrentFrame.mbf/vDepthIdx[i].first<<endl;
+//                 cout<<"close depth (green): "<< vDepthIdx[i].first<<endl;
+//                 cv::rectangle(im,pt1,pt2,cv::Scalar(0,255,0)); // green close
+//                 cv::circle(im,mCurrentFrame.mvKeysUn[vDepthIdx[i].second].pt,2,cv::Scalar(0,255,0),-1);
+
+//                 //cv::rectangle(im2,pt1R,pt2R,cv::Scalar(0,255,0)); // green close
+//                 //cv::circle(im2,cur,2,cv::Scalar(0,255,0),-1);
+
+//             } else if (i == vDepthIdx.size()/2){
+//                 //cout<<"between dispar: "<< mCurrentFrame.mbf/vDepthIdx[i].first<<endl;
+//                 cout<<"between depth (blue): "<< vDepthIdx[i].first<<endl;
+//                 cv::rectangle(im,pt1,pt2,cv::Scalar(255,0,0));   // blue
+//                 cv::circle(im,mCurrentFrame.mvKeysUn[vDepthIdx[i].second].pt,2,cv::Scalar(255,0,0),-1);
+
+//                 //cv::rectangle(im2,pt1R,pt2R,cv::Scalar(255,0,0));   // blue
+//                 //cv::circle(im2,cur,2,cv::Scalar(255,0,0),-1);
+//             } else {
+//                 //cout<<"far dispar: "<< mCurrentFrame.mbf/vDepthIdx[i].first<<endl;
+//                 cout<<"far depth (red): "<< vDepthIdx[i].first<<endl;
+//                 cv::rectangle(im,pt1,pt2,cv::Scalar(0,0,255));   // red far
+//                 cv::circle(im,mCurrentFrame.mvKeysUn[vDepthIdx[i].second].pt,2,cv::Scalar(0,0,255),-1);
+
+//                 //cv::rectangle(im2,pt1R,pt2R,cv::Scalar(0,0,255));   // red far
+//                 //cv::circle(im2,cur,2,cv::Scalar(0,0,255),-1);
+
+//             }
+
+
+//         }
+//     }
+
+// //    cv::Point2f pt1,pt2;
+// //
+// //    pt1.x=mCurrentFrame.mvKeysUn[activekpIndex].pt.x-r;
+// //    pt1.y=mCurrentFrame.mvKeysUn[activekpIndex].pt.y-r;
+// //    pt2.x=mCurrentFrame.mvKeysUn[activekpIndex].pt.x+r;
+// //    pt2.y=mCurrentFrame.mvKeysUn[activekpIndex].pt.y+r;
+// //    cout<<"activekpIndex: "<< activekpIndex<<endl;
+// //    cout<<"Depth of this kp: "<<mCurrentFrame.mvDepth[activekpIndex]<<endl;
+// //    cv::rectangle(im,pt1,pt2,cv::Scalar(0,255,0));
+// //    cv::circle(im,mCurrentFrame.mvKeysUn[activekpIndex].pt,2,cv::Scalar(0,255,0),-1);
+//     cout<<"activekp index: "<<activekpIndex<<", close kp index: "<<vDepthIdx[0].second<<endl;
+//     //cv::imshow("AVP: Current Frame ", im);
     //cv::imshow("AVP: Current Right Frame", im2);
     //cv::waitKey(0);
 
