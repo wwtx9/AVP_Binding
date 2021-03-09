@@ -139,7 +139,7 @@ def _render(sim, isdepth=False):
         # setAgentPosition(agent, NBCameraPosition)
         # print("Current Agent's left camera state after Gradient Descend: {0}".format(agent.state.sensor_states["left_sensor"]))
         # #isTrack, _ = rotateCameraToMidpoint(agent, sim, targetPositionW)
-        # isTrack, _, loc_errorNB = ComputeTargetPositionOnWorldFrame(agent, targetPositionW)
+        # isTrack, _, loc_errorNB = computeTargetPositionOnWorldFrame(agent, targetPositionW)
         # #print("Current Agent's left camera state after Gradient Descend and adjustment: {0}".format(agent.state.sensor_states["left_sensor"]))
         # # print("Current Agent's left camera state after Gradient Descend: {0}".format(agent.state.sensor_states["left_sensor"]))
         #
@@ -268,7 +268,7 @@ def _render(sim, isdepth=False):
                     dic[bestIndex], traceBest))
 
 
-            isTrack, _, loc_error = ComputeTargetPositionOnWorldFrame(agent, targetPositionW)
+            isTrack, _, loc_error = computeTargetPositionOnWorldFrame(agent, targetPositionW)
 
 
             input = targetPixelInCurrentCamera(agent, targetPositionW)
@@ -353,7 +353,7 @@ def _render(sim, isdepth=False):
             # print("Current Agent's left camera state after Gradient Descend: {0}".format(
             #     agent.state.sensor_states["left_sensor"]))
             # # isTrack, _ = rotateCameraToMidpoint(agent, sim, targetPositionW)
-            # isTrack, _, loc_error_NB = ComputeTargetPositionOnWorldFrame(agent, targetPositionW)
+            # isTrack, _, loc_error_NB = computeTargetPositionOnWorldFrame(agent, targetPositionW)
             # print("Mean Square Error NB: {0}".format(loc_error_NB))
 
             # obs = sim.get_sensor_observations()
@@ -507,7 +507,7 @@ def rotateCameraToMidpoint(agent, sim, targetPositionW_):
         print("Rotate camera to left so that z axis of midpoint of baseline go through feature point")
         return True, sim.step("turn_right")
 
-def ComputeTargetPositionOnWorldFrame(agent, targetPositionW_):
+def computeTargetPositionOnWorldFrame(agent, targetPositionW_):
 
     pixel = targetPixelInCurrentCamera(agent, targetPositionW_)
     uL = pixel[0]
