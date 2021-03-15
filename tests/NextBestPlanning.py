@@ -129,9 +129,8 @@ def _render(sim, isdepth=False):
         leftImg = leftImgOrg
         rightImg = rightImgOrg
 
-        stereo_pair = np.concatenate([leftImg,rightImg], axis=1)
-        if len(stereo_pair.shape) > 2:
-            stereo_pair = stereo_pair[..., 0:3][..., ::-1]
+        stereo_pair = np.concatenate([leftImg, rightImg], axis=1)
+
         cv2.imshow("stereo_pair", stereo_pair)
         cv2.waitKey(1000)
 
@@ -142,7 +141,7 @@ def _render(sim, isdepth=False):
 
         # new feature point in pixel coordinate
         # input = np.array([int(inputs[exId][0]), int(inputs[exId][1]), int(inputs[exId][2])])
-        targetPositionW = targetWordCoordinate(agent, 198, 186, 373)
+        targetPositionW = targetWordCoordinate(agent, 917, 905, 322) #917, 905, 322   198, 186, 373
         # targetPositionW = targetWordCoordinate(agent, input[0], input[1], input[2])  #left: 198, 186, 373 right: 917,905,322 437, 431, 293
 
         print("project on right image pixel: {0}".format(project(agent, targetPositionW)))
@@ -152,7 +151,7 @@ def _render(sim, isdepth=False):
         depth_pair = np.clip(depth_pair, 0, 10)
 
         # test
-        input = np.array([198, 186, 373])
+        input = np.array([917, 905, 322])
 
         # depth of target
         depth = depth_pair[input[2], input[0]]
@@ -187,9 +186,11 @@ def _render(sim, isdepth=False):
 
         # update camera position
         setAgentPosition(agent, nextBestCameraPostion)
-        obs = sim.step("turn_left")
-        obs = sim.step("turn_left")
-
+        # obs = sim.step("turn_left")
+        # obs = sim.step("turn_left")
+        obs = sim.step("turn_right")
+        obs = sim.step("turn_right")
+        obs = sim.step("turn_right")
 
         print("Current Agent's left camera state after Gradient Descend without rotation: {0}".format(agent.state.sensor_states["left_sensor"]))
 
