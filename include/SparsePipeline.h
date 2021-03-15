@@ -43,6 +43,10 @@ namespace AVP
         Eigen::Vector3d Gradient(const Eigen::Vector3d &input, const float &depth, Eigen::Matrix3d &U_prior, Eigen::Matrix3d &Rwc);
 
         Eigen::Vector3d GradientofCameraTranslation(const Eigen::Vector3d &input, const float &depth, Eigen::Matrix3d &U_prior, Eigen::Matrix3d &Rwc);
+
+        Eigen::Matrix3d MakeJacobian(const Eigen::Vector3d &input, const float baseline);
+
+        Eigen::Matrix3d MakeQ(const int level);
         //Update posterior
         pair<Eigen::Vector3d, Eigen::Matrix3d> FuseByKalmanFilter(Eigen::Matrix3d &U_obs, Eigen::Matrix3d &U_prior);
 

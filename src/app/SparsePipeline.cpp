@@ -490,9 +490,66 @@ Eigen::Vector3d SparsePipline::GradientBasedOnNextBestTargetLocation(const int &
     return dUpost_dpv;
 }
 
+Eigen::Matrix3d SparsePipline::MakeJacobian(const Eigen::Vector3d &input, const float baseline)
+{
+    const float &xL = input[0];
+    const float &xR = input[1];
+    const float &y = input[2]; 
+
+    float fx = mK.at<float>(0,0);
+    float fy = mK.at<float>(1,1);
+    float cx = mK.at<float>(0,2);
+    float cy = mK.at<float>(1,2);
+
+    Eigen::Matrix3d J;
+    J << cx-xR, xL-cx, 0,
+            cy-y, y-cy, xL-xR,
+            -fx, fx, 0;
+    double front_J = mb/((xL - xR)*(xL - xR));
+    
+    J = front_J * J;
+
+    return J;
+}
+
+Eigen::Matrix3d SparsePipline::MakeQ(const int level)
+{
+    int nlevels = 8;
+    std::vector<float> mvScaleFactor;
+    std::vector<float> mvInvScaleFactor;
+    std::vector<float> mvLevelSigma2;
+    std::vector<float> mvInvLevelSigma2;
+
+    mvScaleFactor.resize(nlevels);
+    mvLevelSigma2.resize(nlevels);
+    mvScaleFactor[0]=1.0f;
+    mvLevelSigma2[0]=1.0f;
+    for(int i=1; i<nlevels; i++)
+    {
+        mvScaleFactor[i]=mvScaleFactor[i-1]*1.2;
+        mvLevelSigma2[i]=mvScaleFactor[i]*mvScaleFactor[i];
+    }
+
+    mvInvScaleFactor.resize(nlevels);
+    mvInvLevelSigma2.resize(nlevels);
+    for(int i=0; i<nlevels; i++)
+    {
+        mvInvScaleFactor[i]=1.0f/mvScaleFactor[i];
+        mvInvLevelSigma2[i]=1.0f/mvLevelSigma2[i];
+    }
+
+    const float &sigma2 = mvLevelSigma2[level];
+    //cout<<"invSigma2 1: "<<invSigma2<<endl;
+    
+    Eigen::Matrix3d Q = Eigen::Matrix3d::Identity()*sigma2;
+
+    return Q;
+}
+
+
 Eigen::Vector3d SparsePipline::GradientofCameraTranslation(const Eigen::Vector3d &input, const float &depth, Eigen::Matrix3d &U_prior, Eigen::Matrix3d &Rwc)
 {
-        //cout<<"Enter Gradient Test function"<<endl;
+    //cout<<"Enter Gradient Test function"<<endl;
     Eigen::Vector3d p_k_1; //location at time k-1
     float cx = 960/2.0;
     float cy = 640/2.0;
@@ -518,7 +575,9 @@ Eigen::Vector3d SparsePipline::GradientofCameraTranslation(const Eigen::Vector3d
     
     //Q covariance matrix for pixel
     int level = 8.0*depth/10.0;
-   // cout<<"level: "<<level<<endl;
+    if(level >= 8)
+        level = 7;
+    cout<<"level: "<<level<<endl;
     int nlevels = 8;
     std::vector<float> mvScaleFactor;
     std::vector<float> mvInvScaleFactor;
@@ -697,55 +756,23 @@ Eigen::Vector3d SparsePipline::Gradient(const Eigen::Vector3d &input, const floa
     const float &xL = input[0];
     const float &xR = input[1];
     const float &y = input[2];  //pixel y
-    //cout<<xL<<" ,"<<xR<<" ,"<<y<<endl;
+    
     double fx = 450.0;
     mb = 0.2;
     double front_p = mb/(xL-xR);
     
     //active kepoint location in relative frame at time k-1
-    p_k_1 << front_p*(xL+xR)*0.5, front_p*y, front_p*fx;
-    
-    //Jacobian matrix
-    Eigen::Matrix3d J;
-    J << cx-xR, xL-cx, 0,
-            cy-y, y-cy, xL-xR,
-            -fx, fx, 0;
-    double front_J = mb/((xL - xR)*(xL - xR));
-    
-    J = front_J * J;
-    
-    //Q covariance matrix for pixel
+    p_k_1 << front_p*(xL-cx), front_p*(y-cy), front_p*fx;
+
+    Eigen::Matrix3d J = MakeJacobian(input, mb);
+
     int level = 8.0*depth/10.0;
-   // cout<<"level: "<<level<<endl;
-    int nlevels = 8;
-    std::vector<float> mvScaleFactor;
-    std::vector<float> mvInvScaleFactor;
-    std::vector<float> mvLevelSigma2;
-    std::vector<float> mvInvLevelSigma2;
-
-    mvScaleFactor.resize(nlevels);
-    mvLevelSigma2.resize(nlevels);
-    mvScaleFactor[0]=1.0f;
-    mvLevelSigma2[0]=1.0f;
-    for(int i=1; i<nlevels; i++)
-    {
-        mvScaleFactor[i]=mvScaleFactor[i-1]*1.2;
-        mvLevelSigma2[i]=mvScaleFactor[i]*mvScaleFactor[i];
-    }
-
-    mvInvScaleFactor.resize(nlevels);
-    mvInvLevelSigma2.resize(nlevels);
-    for(int i=0; i<nlevels; i++)
-    {
-        mvInvScaleFactor[i]=1.0f/mvScaleFactor[i];
-        mvInvLevelSigma2[i]=1.0f/mvLevelSigma2[i];
-    }
-
-    const float &invSigma2 = mvInvLevelSigma2[level];
-    //cout<<"invSigma2 1: "<<invSigma2<<endl;
     
-    Eigen::Matrix3d Q = Eigen::Matrix3d::Identity()*invSigma2;
-   // cout<<"invSigma2: "<<invSigma2<<endl;
+    if(level >= 8)
+        level = 7;
+
+    Eigen::Matrix3d Q = MakeQ(level);
+
 
     //partial differential of U_posterior at time k respect to [pk]v  dU_post/d[pk]v, v = x,y,z //target location
     Eigen::Vector3d dUpost_dpv;  //dUpost_dpv = [tr(front*dUobs_dpx), tr(front*dUobs_dpy),tr(front*dUobs_dpz)]
