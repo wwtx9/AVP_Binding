@@ -337,38 +337,50 @@ int SparsePipline::SelectActiveKeyPoint()
     return activeKeyPointIndex;
 }
 
-Eigen::Vector3d SparsePipline::GradientBasedOnNextBestTargetLocation(const int &kpIndex, Eigen::Matrix3d &U_obs, Eigen::Matrix3d &U_prior, Eigen::Matrix3d &Rwc, Eigen::Vector3d &twc)
+//Gradient of objective function respect to target position using cyclopean coordinate
+Eigen::Vector3d SparsePipline::GradientForTarget(const Eigen::Vector3d &input, const float &depth, Eigen::Matrix3d &U_prior, Eigen::Matrix3d &Rwc)
 {
+    //cout<<"Enter Gradient Test function"<<endl;
+    //transfer target's pixel coordinate to cyclopean coordinate
+    float fx = mK.at<float>(0,0);
+    float fy = mK.at<float>(1,1);
+    float cx = mK.at<float>(0,2);
+    float cy = mK.at<float>(1,2);
+
     Eigen::Vector3d p_k_1; //location at time k-1
-    double deltaT;
-    const cv::KeyPoint &activekpUn = mCurrentFrame.mvKeysUn[kpIndex];
-
-    const float &xL = activekpUn.pt.x;
-    const float &xR = mCurrentFrame.mvuRight[kpIndex];
-    const float &y = activekpUn.pt.y;  //pixel y
-
+    const float &xL = input[0];
+    const float &xR = input[1];
+    const float &y = input[2];  //pixel y
+    
     double front_p = mb/(xL-xR);
-    //active kepoint location in relative frame at time k-1
-    p_k_1 << front_p*(xL+xR)*0.5, front_p*y, front_p*mCurrentFrame.fx;
+    
+    //active kepoint location in relative frame at time k-1 in cyclopean coordinate
+    p_k_1 << front_p*0.5*(xL + xR), front_p*y, front_p*fx;
 
-    //Jacobian matrix
-    Eigen::Matrix3d J;
-    J << -xR, xL, 0,
-            -y, y, xL-xR,
-            -mCurrentFrame.fx, mCurrentFrame.fx, 0;
-    double front_J = mb/((xL - xR)*(xL - xR));
-    J = front_J * J;
+  
+    Eigen::Matrix3d J = MakeJacobian(input);
+    
+    int level = 8.0*depth/10.0;
+    
+    if(level >= 8)
+        level = 7;
 
-    //Q covariance matrix for pixel
-    const float &invSigma2 = mCurrentFrame.mvInvLevelSigma2[activekpUn.octave];
-    Eigen::Matrix3d Q = Eigen::Matrix3d::Identity()*invSigma2;
+    Eigen::Matrix3d Q = MakeQ(level);
 
     //partial differential of U_posterior at time k respect to [pk]v  dU_post/d[pk]v, v = x,y,z //target location
     Eigen::Vector3d dUpost_dpv;  //dUpost_dpv = [tr(front*dUobs_dpx), tr(front*dUobs_dpy),tr(front*dUobs_dpz)]
 
-    Eigen::Matrix3d Uobs  = Rwc * J * Q * J.transpose() * Rwc.transpose(); 
+    Eigen::Matrix3d Uobs  = Rwc * J * Q * J.transpose() * Rwc.transpose();
  
-    Eigen::Matrix3d front_Uobs = Uobs.inverse()*(U_prior.inverse()+Uobs.inverse())*(U_prior.inverse()+Uobs.inverse())*Uobs.inverse(); //front equation (16) and (10) in 2d paper
+    //cout<<"Uobs: "<<Uobs<<endl;
+    //cout<<"U_prior: "<<U_prior<<endl;
+    Eigen::Matrix3d U_post = (U_prior.inverse()+Uobs.inverse()).inverse();
+   
+    Eigen::Matrix3d U_post_2 = U_post*U_post;
+    
+    Eigen::Matrix3d front_Uobs = Uobs.inverse()*U_post_2*Uobs.inverse(); //front equation (16) and (10) in 2d paper
+
+ 
 
     //v = x
     //Calculate related to J, px
@@ -384,23 +396,23 @@ Eigen::Vector3d SparsePipline::GradientBasedOnNextBestTargetLocation(const int &
     //(xL-xR)^2
     double xL_xR_2 = (xL-xR)*(xL-xR);
 
-    //dJ_dxL and dxL_dpx
-    dJ_dxL << 2*mb*xR/xL_xR_3, mb*(-xR-xL)/xL_xR_3, 0,
+    //dJ_dxL 
+    dJ_dxL << 2*mb*xR/xL_xR_3, mb*(-xL-xR)/xL_xR_3, 0,
             2*mb*y/xL_xR_3, -2*mb*y/xL_xR_3, -mb/xL_xR_2,
-            2*mb*mCurrentFrame.fx/xL_xR_3, -2*mb*mCurrentFrame.fx/xL_xR_3, 0;
-    dxL_dpx  = mCurrentFrame.fx/p_k_1[2];
+            2*mb*fx/xL_xR_3, -2*mb*fx/xL_xR_3, 0;
+    
 
-    //dJ_dxR and dxR_dpx
+    //dJ_dxR 
     dJ_dxR << -mb*(xR+xL)/xL_xR_3, 2*mb*xL/xL_xR_3, 0,
             -2*mb*y/xL_xR_3, 2*mb*y/xL_xR_3, mb/xL_xR_2,
-            -2*mb*mCurrentFrame.fx/xL_xR_3, 2*mb*mCurrentFrame.fx/xL_xR_3, 0;
-    dxR_dpx  = mCurrentFrame.fx/p_k_1[2];
+            -2*mb*fx/xL_xR_3, 2*mb*fx/xL_xR_3, 0;
+    
 
-    //dJ_dy and dy_dpx
+    //dJ_dy
     dJ_dy << 0, 0, 0,
-            -mb/xL_xR_2, mb/xL_xR_3, 0,
+            -mb/xL_xR_2, mb/xL_xR_2, 0,
             0, 0, 0;
-    dy_dpx  = 0;
+    
 
     //Calculate related to J^T, px
     //dJT_px = dJT_dxL * dxL_dpx + dJT_dxR * dxR_dpx + dJT_dy * dy_dpx;
@@ -408,13 +420,13 @@ Eigen::Vector3d SparsePipline::GradientBasedOnNextBestTargetLocation(const int &
     Eigen::Matrix3d dJT_dxL, dJT_dxR, dJT_dy;  //size: 3*3
 
     //dJT_dxL
-    dJT_dxL << 2*mb*xR/xL_xR_3, 2*mb*y/xL_xR_3, 2*mb*mCurrentFrame.fx/xL_xR_3,
-            -mb*(xR-xL)/xL_xR_3, -2*mb*y/xL_xR_3, -2*mb*mCurrentFrame.fx/xL_xR_3,
+    dJT_dxL << 2*mb*xR/xL_xR_3, 2*mb*y/xL_xR_3, 2*mb*fx/xL_xR_3,
+            mb*(-xL-xR)/xL_xR_3, -2*mb*y/xL_xR_3, -2*mb*fx/xL_xR_3,
             0, -mb/xL_xR_2, 0;
 
     //dJT_dxR
-    dJT_dxR << -mb*(xR+xL)/xL_xR_3, -2*mb*y/xL_xR_3, -2*mb*mCurrentFrame.fx/xL_xR_3,
-            2*mb*xL/xL_xR_3, 2*mb*y/xL_xR_3, 2*mb*mCurrentFrame.fx/xL_xR_3,
+    dJT_dxR << -mb*(xR+xL)/xL_xR_3, -2*mb*y/xL_xR_3, -2*mb*fx/xL_xR_3,
+            2*mb*xL/xL_xR_3, 2*mb*y/xL_xR_3, 2*mb*fx/xL_xR_3,
             0, mb/xL_xR_2, 0;
 
     //dJT_dy
@@ -422,11 +434,23 @@ Eigen::Vector3d SparsePipline::GradientBasedOnNextBestTargetLocation(const int &
             0, mb/xL_xR_2, 0,
             0, 0, 0;
 
+    
+    //v = x
+    //dxL_dpx
+    dxL_dpx  = fx/p_k_1[2];
+
+    //dxR_dpx
+    dxR_dpx  = fx/p_k_1[2];
+
+    //dy_dpx
+    dy_dpx  = 0;
+
     dJ_dpx = dJ_dxL*dxL_dpx + dJ_dxR*dxR_dpx + dJ_dy*dy_dpx;
     dJT_dpx = dJT_dxL*dxL_dpx + dJT_dxR*dxR_dpx + dJT_dy*dy_dpx;
 
     Eigen::Matrix3d dUobs_dpx = Rwc*(dJ_dpx*Q*J.transpose() +J*Q*dJT_dpx)*Rwc.transpose();
-
+    
+    //cout<<"dUobs_dpx: "<<dUobs_dpx<<endl;
     //v = y
     //Calculate related to J, py
     //equation (19) in paper
@@ -439,7 +463,7 @@ Eigen::Vector3d SparsePipline::GradientBasedOnNextBestTargetLocation(const int &
     dxR_dpy  = 0;
 
     //dy_dpy
-    dy_dpy  = mCurrentFrame.fx/p_k_1[2];
+    dy_dpy  = fx/p_k_1[2];
 
     //Calculate related to J^T, py
 
@@ -452,6 +476,7 @@ Eigen::Vector3d SparsePipline::GradientBasedOnNextBestTargetLocation(const int &
     dJT_dpy = dJT_dxL*dxL_dpy + dJT_dxR*dxR_dpy + dJT_dy*dy_dpy;
 
     Eigen::Matrix3d dUobs_dpy = Rwc*(dJ_dpy*Q*J.transpose() +J*Q*dJT_dpy)*Rwc.transpose();
+    //cout<<"dUobs_dpy: "<<dUobs_dpy<<endl;
 
     //v = z
     //Calculate related to J
@@ -461,13 +486,13 @@ Eigen::Vector3d SparsePipline::GradientBasedOnNextBestTargetLocation(const int &
 
     double pz_2 = p_k_1[2] * p_k_1[2];
     //dxL_dpz
-    dxL_dpy  = -mCurrentFrame.fx*(p_k_1[0]+0.5*mb)/pz_2;
+    dxL_dpz  = -fx*(p_k_1[0]+mb*0.5)/pz_2;
 
     //dxR_dpz
-    dxR_dpz  = -mCurrentFrame.fx*(p_k_1[0]-mb*0.5)/pz_2;
+    dxR_dpz  = -fx*(p_k_1[0]-mb*0.5)/pz_2;
 
     //dy_dpz
-    dy_dpz  = -mCurrentFrame.fx*p_k_1[1]/pz_2;
+    dy_dpz  = -fx*p_k_1[1]/pz_2;
 
     //Calculate related to J^T, pz
 
@@ -480,30 +505,210 @@ Eigen::Vector3d SparsePipline::GradientBasedOnNextBestTargetLocation(const int &
     dJT_dpz = dJT_dxL*dxL_dpz + dJT_dxR*dxR_dpz + dJT_dy*dy_dpz;
 
     Eigen::Matrix3d dUobs_dpz = Rwc*(dJ_dpz*Q*J.transpose() +J*Q*dJT_dpz)*Rwc.transpose();
-
+    //cout<<"dUobs_dpz: "<<dUobs_dpz<<endl;
     //dUpost_dpv = [tr(front*dUobs_dpx), tr(front*dUobs_dpy),tr(front*dUobs_dpz)]
     dUpost_dpv << (front_Uobs*dUobs_dpx).trace(), (front_Uobs*dUobs_dpy).trace(), (front_Uobs*dUobs_dpz).trace();
-
-    // Eigen::Vector3d pk;
-
-    // pk -= pk-dUpost_dpv*deltaT;
+    
+    //cout<<"Gradient Test function Done"<<endl;
     return dUpost_dpv;
 }
 
-Eigen::Matrix3d SparsePipline::MakeJacobian(const Eigen::Vector3d &input, const float baseline)
+//test
+Eigen::Vector3d SparsePipline::Gradient(const Eigen::Vector3d &input, const float &depth, Eigen::Matrix3d &U_prior, Eigen::Matrix3d &Rwc)
 {
+    //cout<<"Enter Gradient Test function"<<endl;
+    Eigen::Vector3d p_k_1; //location at time k-1
+    float fx = mK.at<float>(0,0);
+    float fy = mK.at<float>(1,1);
+    float cx = mK.at<float>(0,2);
+    float cy = mK.at<float>(1,2);
+    
     const float &xL = input[0];
     const float &xR = input[1];
-    const float &y = input[2]; 
+    const float &y = input[2];  //pixel y
+    
+    double front_p = mb/(xL-xR);
+    
+    //active kepoint location in relative frame at time k-1
+    p_k_1 << front_p*(xL-cx), front_p*(y-cy), front_p*fx;
 
+    //Jacobian matrix
+    Eigen::Matrix3d J;
+    J << cx-xR, xL-cx, 0,
+            cy-y, y-cy, xL-xR,
+            -fx, fx, 0;
+    double front_J = mb/((xL - xR)*(xL - xR));
+    
+    J = front_J * J;
+
+    int level = 8.0*depth/10.0;
+    
+    if(level >= 8)
+        level = 7;
+
+    Eigen::Matrix3d Q = MakeQ(level);
+
+
+    //partial differential of U_posterior at time k respect to [pk]v  dU_post/d[pk]v, v = x,y,z //target location
+    Eigen::Vector3d dUpost_dpv;  //dUpost_dpv = [tr(front*dUobs_dpx), tr(front*dUobs_dpy),tr(front*dUobs_dpz)]
+
+    Eigen::Matrix3d Uobs  = Rwc * J * Q * J.transpose() * Rwc.transpose();
+    //cout<<"Uobs: "<<Uobs<<endl;
+    //cout<<"U_prior: "<<U_prior<<endl;
+    Eigen::Matrix3d U_post = (U_prior.inverse()+Uobs.inverse()).inverse();
+    Eigen::Matrix3d U_post_2 = U_post*U_post;
+    Eigen::Matrix3d front_Uobs = Uobs.inverse()*U_post_2*Uobs.inverse(); //front equation (16) and (10) in 2d paper
+
+    //cout<<"front_Uobs: "<<front_Uobs<<endl;
+
+    //v = x
+    //Calculate related to J, px
+    //dJ_px = dJ_dxL * dxL_dpx + dJ_dxR * dxR_dpx + dJ_dy * dy_dpx equation (18) in paper
+    Eigen::Matrix3d dJ_dpx;
+    //equation (19) in paper
+    Eigen::Matrix3d dJ_dxL, dJ_dxR, dJ_dy;  //size: 3*3
+    double dxL_dpx, dxR_dpx, dy_dpx;
+
+    //common variable
+    //(xL-xR)^3
+    double xL_xR_3 = (xL-xR)*(xL-xR)*(xL-xR);
+    //(xL-xR)^2
+    double xL_xR_2 = (xL-xR)*(xL-xR);
+
+    //dJ_dxL 
+    dJ_dxL << -2*mb*(cx-xR)/xL_xR_3, mb*(-xL+2*cx-xR)/xL_xR_3, 0,
+            2*mb*(y-cy)/xL_xR_3, -2*mb*(y-cy)/xL_xR_3, -mb/xL_xR_2,
+            2*mb*fx/xL_xR_3, -2*mb*fx/xL_xR_3, 0;
+    
+
+    //dJ_dxR 
+    dJ_dxR << mb*(-xR+2*cx-xL)/xL_xR_3, 2*mb*(xL-cx)/xL_xR_3, 0,
+            -2*mb*(y-cy)/xL_xR_3, 2*mb*(y-cy)/xL_xR_3, mb/xL_xR_2,
+            -2*mb*fx/xL_xR_3, 2*mb*fx/xL_xR_3, 0;
+    
+
+    //dJ_dy
+    dJ_dy << 0, 0, 0,
+            -mb/xL_xR_2, mb/xL_xR_2, 0,
+            0, 0, 0;
+    
+
+    //Calculate related to J^T, px
+    //dJT_px = dJT_dxL * dxL_dpx + dJT_dxR * dxR_dpx + dJT_dy * dy_dpx;
+    Eigen::Matrix3d dJT_dpx;
+    Eigen::Matrix3d dJT_dxL, dJT_dxR, dJT_dy;  //size: 3*3
+
+    //dJT_dxL
+    dJT_dxL << -2*mb*(cx-xR)/xL_xR_3, 2*mb*(y-cy)/xL_xR_3, 2*mb*fx/xL_xR_3,
+            mb*(-xL+2*cx-xR)/xL_xR_3, -2*mb*(y-cy)/xL_xR_3, -2*mb*fx/xL_xR_3,
+            0, -mb/xL_xR_2, 0;
+
+    //dJT_dxR
+    dJT_dxR << mb*(-xR+2*cx-xL)/xL_xR_3, -2*mb*(y-cy)/xL_xR_3, -2*mb*fx/xL_xR_3,
+            2*mb*(xL-cx)/xL_xR_3, 2*mb*(y-cy)/xL_xR_3, 2*mb*fx/xL_xR_3,
+            0, mb/xL_xR_2, 0;
+
+    //dJT_dy
+    dJT_dy << 0, -mb/xL_xR_2, 0,
+            0, mb/xL_xR_2, 0,
+            0, 0, 0;
+
+    
+    //v = x
+    //dxL_dpx
+    dxL_dpx  = fx/p_k_1[2];
+
+    //dxR_dpx
+    dxR_dpx  = fx/p_k_1[2];
+
+    //dy_dpx
+    dy_dpx  = 0;
+
+    dJ_dpx = dJ_dxL*dxL_dpx + dJ_dxR*dxR_dpx + dJ_dy*dy_dpx;
+    dJT_dpx = dJT_dxL*dxL_dpx + dJT_dxR*dxR_dpx + dJT_dy*dy_dpx;
+
+    Eigen::Matrix3d dUobs_dpx = Rwc*(dJ_dpx*Q*J.transpose() +J*Q*dJT_dpx)*Rwc.transpose();
+    
+    //cout<<"dUobs_dpx: "<<dUobs_dpx<<endl;
+    //v = y
+    //Calculate related to J, py
+    //equation (19) in paper
+    double dxL_dpy, dxR_dpy, dy_dpy;
+
+    //dxL_dpy
+    dxL_dpy  = 0;
+
+    //dxR_dpy
+    dxR_dpy  = 0;
+
+    //dy_dpy
+    dy_dpy  = fx/p_k_1[2];
+
+    //Calculate related to J^T, py
+
+    //dJ_px = dJ_dxL * dxL_dpx + dJ_dxR * dxR_dpx + dJ_dy * dy_dpx equation (18) in paper
+    Eigen::Matrix3d dJ_dpy;
+    //dJT_py = dJT_dxL * dxL_dpy + dJT_dxR * dxR_dpx + dJT_dy * dy_dpx;
+    Eigen::Matrix3d dJT_dpy;
+
+    dJ_dpy = dJ_dxL*dxL_dpy + dJ_dxR*dxR_dpy + dJ_dy*dy_dpy;
+    dJT_dpy = dJT_dxL*dxL_dpy + dJT_dxR*dxR_dpy + dJT_dy*dy_dpy;
+
+    Eigen::Matrix3d dUobs_dpy = Rwc*(dJ_dpy*Q*J.transpose() +J*Q*dJT_dpy)*Rwc.transpose();
+    //cout<<"dUobs_dpy: "<<dUobs_dpy<<endl;
+
+    //v = z
+    //Calculate related to J
+    //Calculate related to J, pz
+    //equation (19) in paper
+    double dxL_dpz, dxR_dpz, dy_dpz;
+
+    double pz_2 = p_k_1[2] * p_k_1[2];
+    //dxL_dpz
+    dxL_dpz  =  -fx*p_k_1[0]/pz_2;
+
+    //dxR_dpz
+    dxR_dpz  = -fx*(p_k_1[0]-mb)/pz_2;
+
+    //dy_dpz
+    dy_dpz  = -fx*p_k_1[1]/pz_2;
+
+    //Calculate related to J^T, pz
+
+    //dJ_px = dJ_dxL * dxL_dpx + dJ_dxR * dxR_dpx + dJ_dy * dy_dpx equation (18) in paper
+    Eigen::Matrix3d dJ_dpz;
+    //dJT_py = dJT_dxL * dxL_dpy + dJT_dxR * dxR_dpx + dJT_dy * dy_dpx;
+    Eigen::Matrix3d dJT_dpz;
+
+    dJ_dpz = dJ_dxL*dxL_dpz + dJ_dxR*dxR_dpz + dJ_dy*dy_dpz;
+    dJT_dpz = dJT_dxL*dxL_dpz + dJT_dxR*dxR_dpz + dJT_dy*dy_dpz;
+
+    Eigen::Matrix3d dUobs_dpz = Rwc*(dJ_dpz*Q*J.transpose() +J*Q*dJT_dpz)*Rwc.transpose();
+    //cout<<"dUobs_dpz: "<<dUobs_dpz<<endl;
+    //dUpost_dpv = [tr(front*dUobs_dpx), tr(front*dUobs_dpy),tr(front*dUobs_dpz)]
+    dUpost_dpv << (front_Uobs*dUobs_dpx).trace(), (front_Uobs*dUobs_dpy).trace(), (front_Uobs*dUobs_dpz).trace();
+    
+    //cout<<"Gradient Test function Done"<<endl;
+    return dUpost_dpv;
+}
+
+
+Eigen::Matrix3d SparsePipline::MakeJacobian(const Eigen::Vector3d &input)
+{
     float fx = mK.at<float>(0,0);
     float fy = mK.at<float>(1,1);
     float cx = mK.at<float>(0,2);
     float cy = mK.at<float>(1,2);
 
+    const float &xL = input[0];
+    const float &xR = input[1];
+    const float &y = input[2]; 
+
+    
+
     Eigen::Matrix3d J;
-    J << cx-xR, xL-cx, 0,
-            cy-y, y-cy, xL-xR,
+    J << -xR, xL, 0,
+            -y, y, xL-xR,
             -fx, fx, 0;
     double front_J = mb/((xL - xR)*(xL - xR));
     
@@ -546,7 +751,7 @@ Eigen::Matrix3d SparsePipline::MakeQ(const int level)
     return Q;
 }
 
-
+//Gradient of objective function respect to target position
 Eigen::Vector3d SparsePipline::GradientofCameraTranslation(const Eigen::Vector3d &input, const float &depth, Eigen::Matrix3d &U_prior, Eigen::Matrix3d &Rwc)
 {
     //cout<<"Enter Gradient Test function"<<endl;
@@ -743,178 +948,6 @@ Eigen::Vector3d SparsePipline::GradientofCameraTranslation(const Eigen::Vector3d
     
     //cout<<"Gradient Test function Done"<<endl;
     return dUpost_dtcw;
-}
-
-//test
-Eigen::Vector3d SparsePipline::Gradient(const Eigen::Vector3d &input, const float &depth, Eigen::Matrix3d &U_prior, Eigen::Matrix3d &Rwc)
-{
-    //cout<<"Enter Gradient Test function"<<endl;
-    Eigen::Vector3d p_k_1; //location at time k-1
-
-    float cx = 960/2.0;
-    float cy = 640/2.0;
-    const float &xL = input[0];
-    const float &xR = input[1];
-    const float &y = input[2];  //pixel y
-    
-    double fx = 450.0;
-    mb = 0.2;
-    double front_p = mb/(xL-xR);
-    
-    //active kepoint location in relative frame at time k-1
-    p_k_1 << front_p*(xL-cx), front_p*(y-cy), front_p*fx;
-
-    Eigen::Matrix3d J = MakeJacobian(input, mb);
-
-    int level = 8.0*depth/10.0;
-    
-    if(level >= 8)
-        level = 7;
-
-    Eigen::Matrix3d Q = MakeQ(level);
-
-
-    //partial differential of U_posterior at time k respect to [pk]v  dU_post/d[pk]v, v = x,y,z //target location
-    Eigen::Vector3d dUpost_dpv;  //dUpost_dpv = [tr(front*dUobs_dpx), tr(front*dUobs_dpy),tr(front*dUobs_dpz)]
-
-    Eigen::Matrix3d Uobs  = Rwc * J * Q * J.transpose() * Rwc.transpose();
-    //cout<<"Uobs: "<<Uobs<<endl;
-    //cout<<"U_prior: "<<U_prior<<endl;
-    Eigen::Matrix3d U_post = (U_prior.inverse()+Uobs.inverse()).inverse();
-    Eigen::Matrix3d U_post_2 = U_post*U_post;
-    Eigen::Matrix3d front_Uobs = Uobs.inverse()*U_post_2*Uobs.inverse(); //front equation (16) and (10) in 2d paper
-
-    //cout<<"front_Uobs: "<<front_Uobs<<endl;
-
-    //v = x
-    //Calculate related to J, px
-    //dJ_px = dJ_dxL * dxL_dpx + dJ_dxR * dxR_dpx + dJ_dy * dy_dpx equation (18) in paper
-    Eigen::Matrix3d dJ_dpx;
-    //equation (19) in paper
-    Eigen::Matrix3d dJ_dxL, dJ_dxR, dJ_dy;  //size: 3*3
-    double dxL_dpx, dxR_dpx, dy_dpx;
-
-    //common variable
-    //(xL-xR)^3
-    double xL_xR_3 = (xL-xR)*(xL-xR)*(xL-xR);
-    //(xL-xR)^2
-    double xL_xR_2 = (xL-xR)*(xL-xR);
-
-    //dJ_dxL 
-    dJ_dxL << -2*mb*(cx-xR)/xL_xR_3, mb*(-xL+2*cx-xR)/xL_xR_3, 0,
-            2*mb*(y-cy)/xL_xR_3, -2*mb*(y-cy)/xL_xR_3, -mb/xL_xR_2,
-            2*mb*fx/xL_xR_3, -2*mb*fx/xL_xR_3, 0;
-    
-
-    //dJ_dxR 
-    dJ_dxR << mb*(-xR+2*cx-xL)/xL_xR_3, 2*mb*(xL-cx)/xL_xR_3, 0,
-            -2*mb*(y-cy)/xL_xR_3, 2*mb*(y-cy)/xL_xR_3, mb/xL_xR_2,
-            -2*mb*fx/xL_xR_3, 2*mb*fx/xL_xR_3, 0;
-    
-
-    //dJ_dy
-    dJ_dy << 0, 0, 0,
-            -mb/xL_xR_2, mb/xL_xR_2, 0,
-            0, 0, 0;
-    
-
-    //Calculate related to J^T, px
-    //dJT_px = dJT_dxL * dxL_dpx + dJT_dxR * dxR_dpx + dJT_dy * dy_dpx;
-    Eigen::Matrix3d dJT_dpx;
-    Eigen::Matrix3d dJT_dxL, dJT_dxR, dJT_dy;  //size: 3*3
-
-    //dJT_dxL
-    dJT_dxL << -2*mb*(cx-xR)/xL_xR_3, 2*mb*(y-cy)/xL_xR_3, 2*mb*fx/xL_xR_3,
-            mb*(-xL+2*cx-xR)/xL_xR_3, -2*mb*(y-cy)/xL_xR_3, -2*mb*fx/xL_xR_3,
-            0, -mb/xL_xR_2, 0;
-
-    //dJT_dxR
-    dJT_dxR << mb*(-xR+2*cx-xL)/xL_xR_3, -2*mb*(y-cy)/xL_xR_3, -2*mb*fx/xL_xR_3,
-            2*mb*(xL-cx)/xL_xR_3, 2*mb*(y-cy)/xL_xR_3, 2*mb*fx/xL_xR_3,
-            0, mb/xL_xR_2, 0;
-
-    //dJT_dy
-    dJT_dy << 0, -mb/xL_xR_2, 0,
-            0, mb/xL_xR_2, 0,
-            0, 0, 0;
-
-    
-    //v = x
-    //dxL_dpx
-    dxL_dpx  = fx/p_k_1[2];
-
-    //dxR_dpx
-    dxR_dpx  = fx/p_k_1[2];
-
-    //dy_dpx
-    dy_dpx  = 0;
-
-    dJ_dpx = dJ_dxL*dxL_dpx + dJ_dxR*dxR_dpx + dJ_dy*dy_dpx;
-    dJT_dpx = dJT_dxL*dxL_dpx + dJT_dxR*dxR_dpx + dJT_dy*dy_dpx;
-
-    Eigen::Matrix3d dUobs_dpx = Rwc*(dJ_dpx*Q*J.transpose() +J*Q*dJT_dpx)*Rwc.transpose();
-    
-    //cout<<"dUobs_dpx: "<<dUobs_dpx<<endl;
-    //v = y
-    //Calculate related to J, py
-    //equation (19) in paper
-    double dxL_dpy, dxR_dpy, dy_dpy;
-
-    //dxL_dpy
-    dxL_dpy  = 0;
-
-    //dxR_dpy
-    dxR_dpy  = 0;
-
-    //dy_dpy
-    dy_dpy  = fx/p_k_1[2];
-
-    //Calculate related to J^T, py
-
-    //dJ_px = dJ_dxL * dxL_dpx + dJ_dxR * dxR_dpx + dJ_dy * dy_dpx equation (18) in paper
-    Eigen::Matrix3d dJ_dpy;
-    //dJT_py = dJT_dxL * dxL_dpy + dJT_dxR * dxR_dpx + dJT_dy * dy_dpx;
-    Eigen::Matrix3d dJT_dpy;
-
-    dJ_dpy = dJ_dxL*dxL_dpy + dJ_dxR*dxR_dpy + dJ_dy*dy_dpy;
-    dJT_dpy = dJT_dxL*dxL_dpy + dJT_dxR*dxR_dpy + dJT_dy*dy_dpy;
-
-    Eigen::Matrix3d dUobs_dpy = Rwc*(dJ_dpy*Q*J.transpose() +J*Q*dJT_dpy)*Rwc.transpose();
-    //cout<<"dUobs_dpy: "<<dUobs_dpy<<endl;
-
-    //v = z
-    //Calculate related to J
-    //Calculate related to J, pz
-    //equation (19) in paper
-    double dxL_dpz, dxR_dpz, dy_dpz;
-
-    double pz_2 = p_k_1[2] * p_k_1[2];
-    //dxL_dpz
-    dxL_dpz  = -fx*p_k_1[0]/pz_2;
-
-    //dxR_dpz
-    dxR_dpz  = -fx*(p_k_1[0]-mb)/pz_2;
-
-    //dy_dpz
-    dy_dpz  = -fx*p_k_1[1]/pz_2;
-
-    //Calculate related to J^T, pz
-
-    //dJ_px = dJ_dxL * dxL_dpx + dJ_dxR * dxR_dpx + dJ_dy * dy_dpx equation (18) in paper
-    Eigen::Matrix3d dJ_dpz;
-    //dJT_py = dJT_dxL * dxL_dpy + dJT_dxR * dxR_dpx + dJT_dy * dy_dpx;
-    Eigen::Matrix3d dJT_dpz;
-
-    dJ_dpz = dJ_dxL*dxL_dpz + dJ_dxR*dxR_dpz + dJ_dy*dy_dpz;
-    dJT_dpz = dJT_dxL*dxL_dpz + dJT_dxR*dxR_dpz + dJT_dy*dy_dpz;
-
-    Eigen::Matrix3d dUobs_dpz = Rwc*(dJ_dpz*Q*J.transpose() +J*Q*dJT_dpz)*Rwc.transpose();
-    //cout<<"dUobs_dpz: "<<dUobs_dpz<<endl;
-    //dUpost_dpv = [tr(front*dUobs_dpx), tr(front*dUobs_dpy),tr(front*dUobs_dpz)]
-    dUpost_dpv << (front_Uobs*dUobs_dpx).trace(), (front_Uobs*dUobs_dpy).trace(), (front_Uobs*dUobs_dpz).trace();
-    
-    //cout<<"Gradient Test function Done"<<endl;
-    return dUpost_dpv;
 }
 
 

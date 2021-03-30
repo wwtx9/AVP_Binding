@@ -201,6 +201,29 @@ def drawTrajectory(x_nbv, z_nbv, targetPositionW, exId):
     # fig.savefig('Experiment_{0}_traj.png'.format(exId+1), dpi=fig.dpi)
     # fig.savefig('trajectory.png', dpi=fig.dpi)
 
+def drawTrajectoryTogether(x, z, x_nbv, z_nbv, targetPositionW, exId):
+    fig = plt.figure()
+    exId = 2
+    plt.plot(x_nbv, z_nbv, color="g", linestyle="-", marker="*", linewidth=1.5)
+
+    for i in range(len(x_nbv)):
+        x_t = [x_nbv[i], x[i]]
+        z_t = [z_nbv[i], z[i]]
+        plt.plot(x_t, z_t, color="y", linestyle="--", marker=".", linewidth=1.0)
+
+    # plt.plot(x_nbv, z_nbv, color="y", linestyle="--", marker=".", linewidth=1.0)
+    # plt.legend(loc='upper left', bbox_to_anchor=(0.2, 0.95))
+    plt.plot(targetPositionW[0], targetPositionW[2], 'o', color='r')
+    plt.xlabel("x")
+    plt.ylabel("z")
+    plt.legend(["Gradient Descent Action", "Fixed Action"])
+    # plt.yscale('log')
+    plt.title("trajectory {0}".format(exId))
+    # ax = plt.gca()
+    # ax.set_aspect(0.05)
+    plt.show()
+    fig.savefig('trajectory{0}.png'.format(exId), dpi=fig.dpi)
+
 def plotTraceTogether(y1_data, y2_data, id):
     n1 = len(y1_data)
     x1 = range(1, n1 + 1)
@@ -315,7 +338,7 @@ def _render(sim, isdepth=False):
     init_state = agent.state
     print("init agent position: {0}".format(init_state.position))
     # start move
-    for exId in range(0, 1):
+    for exId in range(1, 2):
         print("++++++++Experiment {0}+++++++".format(exId))
         agent.set_state(init_state)
         leftImg = leftImgOrg
@@ -331,12 +354,15 @@ def _render(sim, isdepth=False):
         # time k = 0
         x_nbv = []
         z_nbv = []
+
+        x = []
+        z = []
         agent.set_state(init_state)
 
         # new feature point in pixel coordinate
-        input = np.array([inputs[exId][0], inputs[exId][1], inputs[exId][2]])
+        # input = np.array([inputs[exId][0], inputs[exId][1], inputs[exId][2]])
         # test
-        input = np.array([198, 186, 373])
+        input = np.array([917, 905, 322])
         obs = sim.get_sensor_observations()
         # stereo_pair = np.concatenate([obs["left_sensor"], obs["right_sensor"]], axis=1)
         # if len(stereo_pair.shape) > 2:
@@ -346,7 +372,7 @@ def _render(sim, isdepth=False):
         # keystroke = cv2.waitKey(1000)
         # if keystroke == ord("q"):
         #     break
-        targetPositionW = targetWordCoordinate(agent, 198, 186, 373) #917, 905, 322   198, 186, 373
+        targetPositionW = targetWordCoordinate(agent, 917, 905, 322) #917, 905, 322   198, 186, 373
         # targetPositionW = targetWordCoordinate(agent, input[0], input[1], input[2])  #left: 198, 186, 373 right: 917,905,322 437, 431, 293
         # input_withoutOffset = np.array([input[0]-cx, input[1]-cx, input[2]-cy])
         # targetPositionCy = targetPositionIncycolpean(input_withoutOffset)
@@ -365,7 +391,6 @@ def _render(sim, isdepth=False):
         depth_pair = np.concatenate([obs["left_sensor_depth"], obs["right_sensor_depth"]], axis=1)
 
         depth_pair = np.clip(depth_pair, 0, 10)
-
 
 
         # depth of target
@@ -405,9 +430,9 @@ def _render(sim, isdepth=False):
         t = R.dot(targetPositionCyNext)
         print(t)
         Rwcy_rectify = Rwcy.dot(R.T)
-        # print("Rwcy_next : {0}".format(Rwcy_rectify))
 
-
+        x.append(nextBestCameraPostionIncy[0])
+        z.append(nextBestCameraPostionIncy[2])
         x_nbv.append(nextBestCameraPostionIncy[0])
         z_nbv.append(nextBestCameraPostionIncy[2])
 
@@ -418,27 +443,9 @@ def _render(sim, isdepth=False):
         setAgentRotation(agent, Rwcy_rectify)
 
 
-
-        #viz
-        # obs = sim.get_sensor_observations()
-        # stereo_pair = np.concatenate([obs["left_sensor"], obs["right_sensor"]], axis=1)
-        # if len(stereo_pair.shape) > 2:
-        #     stereo_pair = stereo_pair[..., 0:3][..., ::-1]
-        # cv2.imshow("stereo_pair", stereo_pair)
-        #
-        # keystroke = cv2.waitKey(1000)
-        # if keystroke == ord("q"):
-        #     break
-
-        # obs = sim.step("turn_right")
-        # obs = sim.step("turn_right")
-        # obs = sim.step("turn_right")
-
-
-
         # chose fix move and do gradient descent
-        for i in range(1, 200):  # np.sqrt(loc_error) > 1e-3:
-            print("+++++++++++++Step {0}++++++++".format(i))
+        for step in range(1, 200):  # np.sqrt(loc_error) > 1e-3:
+            print("+++++++++++++Step {0}++++++++".format(step))
             print("Current Agent's state: {0}".format(agent.state))
             input = targetPixelInCurrentCamera(agent, targetPositionW)
             # print(input)
@@ -468,18 +475,116 @@ def _render(sim, isdepth=False):
 
                 print("Current Agent's trace: {0}".format(trace))
 
-                #visualize
-                obs = sim.get_sensor_observations()
-                stereo_pair = np.concatenate([obs["left_sensor"], obs["right_sensor"]], axis=1)
-                if len(stereo_pair.shape) > 2:
-                    stereo_pair = stereo_pair[..., 0:3][..., ::-1]
-                cv2.imshow("stereo_pair", stereo_pair)
 
-                keystroke = cv2.waitKey(0)
-                if keystroke == ord("q"):
+                last_agent_state = agent.state
+                last_depth_pair = depth_pair
+                traceBest = float('inf')
+                bestIndex = 0
+                for j in range(3):
+
+                    if j == 0:
+                        obs = sim.step("move_forward")
+
+                        depth_pair = np.concatenate([obs["left_sensor_depth"], obs["right_sensor_depth"]], axis=1)
+
+                        if isdepth:
+                            depth_pair = np.clip(depth_pair, 0, 10)
+
+                        isValidF, U_obsF = computeObsCovarianceForFixedMove(agent, depth_pair, targetPositionW)
+
+                        U_postF, traceF = objectiveFun(U_prior, U_obsF)
+
+                        if traceF < traceBest and isValidF:
+                            traceBest = traceF
+                            bestIndex = j
+                            U_post = U_postF
+
+                        agent.set_state(last_agent_state)
+                    elif j == 1:
+                        obs = sim.step("turn_left")
+                        obs = sim.step("move_forward")
+                        depth_pair = np.concatenate([obs["left_sensor_depth"], obs["right_sensor_depth"]], axis=1)
+
+                        # If it is a depth pair, manually normalize into [0, 1]
+                        # so that images are always consistent
+                        if isdepth:
+                            depth_pair = np.clip(depth_pair, 0, 10)
+
+                        isValidL, U_obsL = computeObsCovarianceForFixedMove(agent, depth_pair, targetPositionW)
+
+                        U_postL, traceL = objectiveFun(U_prior, U_obsL)
+
+                        if traceL < traceBest and isValidL:
+                            traceBest = traceL
+                            bestIndex = j
+                            U_post = U_postL
+
+                        agent.set_state(last_agent_state)
+                    elif j == 2:
+                        obs = sim.step("turn_right")
+                        obs = sim.step("move_forward")
+                        # print("Try to Right")
+
+                        depth_pair = np.concatenate([obs["left_sensor_depth"], obs["right_sensor_depth"]], axis=1)
+
+                        # If it is a depth pair, manually normalize into [0, 1]
+                        # so that images are always consistent
+                        if isdepth:
+                            depth_pair = np.clip(depth_pair, 0, 10)
+
+                        isValidR, U_obsR = computeObsCovarianceForFixedMove(agent, depth_pair, targetPositionW)
+
+                        U_postR, traceR = objectiveFun(U_prior, U_obsR)
+
+                        if traceR < traceBest and isValidR:
+                            traceBest = traceR
+                            bestIndex = j
+                            U_post = U_postR
+
+                        agent.set_state(last_agent_state)
+
+                if bestIndex == -1:
+                    print("Feature point can not be observed by camera")
                     break
 
+                obs = sim.step(dic[bestIndex])
+
+                if bestIndex >= 1:
+                    obs = sim.step("move_forward")
+
+                R_w_s_Current = quaternion.as_rotation_matrix(agent.get_state().sensor_states["left_sensor"].rotation)
+                R_w_c_Current = R_w_s_Current.dot(R_s_c)
+                t = agent.state.sensor_states["left_sensor"].position - R_w_c_Current.dot(tcyclopean_leftcamera)
+                x.append(t[0])
+                z.append(t[2])
+                print("Fixed Move: {0}".format(dic[bestIndex]))
+
+                # if step >= 90:
+                # obs = sim.get_sensor_observations()
+                # stereo_pair = np.concatenate([obs["left_sensor"], obs["right_sensor"]], axis=1)
+                # if len(stereo_pair.shape) > 2:
+                #     stereo_pair = stereo_pair[..., 0:3][..., ::-1]
+                # cv2.imshow("stereo_pair", stereo_pair)
+                #
+                # keystroke = cv2.waitKey(0)
+                # if keystroke == ord("q"):
+                #     break
+
+                agent.set_state(last_agent_state)
+
+                # if step >= 90:
+                #     obs = sim.get_sensor_observations()
+                #     stereo_pair = np.concatenate([obs["left_sensor"], obs["right_sensor"]], axis=1)
+                #     if len(stereo_pair.shape) > 2:
+                #         stereo_pair = stereo_pair[..., 0:3][..., ::-1]
+                #     cv2.imshow("stereo_pair", stereo_pair)
+                #
+                #     keystroke = cv2.waitKey(1000)
+                #     if keystroke == ord("q"):
+                #         break
+
                 # Predict next best position of target and camera at time k+1 base on current observation at time k
+                depth_pair = last_depth_pair
                 depth = depth_pair[int(input[2]), int(input[0])]
                 input_withoutOffset = np.array([input[0] - cx, input[1] - cx, input[2] - cy])
                 delta = sp.GradientForTarget(input_withoutOffset, depth, U_prior, R_w_c)
@@ -503,7 +608,7 @@ def _render(sim, isdepth=False):
                 # update camera position
                 setAgentPosition(agent, nextBestCameraPostionIncy)
 
-                # setAgentRotation(agent, Rwcy_rectify)
+                setAgentRotation(agent, Rwcy_rectify)
                 # print("Current Agent's state after Gradient Descend with rotation: {0}".format(agent.state))
 
                 U_prior = U_post
@@ -512,27 +617,9 @@ def _render(sim, isdepth=False):
         # exId = 2
         # drawTrajectory(x_nbv, z_nbv, targetPositionW, exId)
         # plotLocError(error_array, exId)
-        plotTrace(trace_array, exId)
-        # if exId == 0:
-        # # y2 = [2.305539769016563, 0.8263557457755599, 0.3540837839763306, 0.1720042645012877, 0.0916494988566281, 0.04586429366700652, 0.02686729433471213, 0.016794677570824344, 0.0108787178831339, 0.007213834661898134, 0.004384054062706234, 0.003957583555667254, 0.0030890447312009483, 0.0021548619776846, 0.001545658994013445, 0.0011246652873587344, 0.0008253481522115234, 0.0006085378702942314, 0.0005463067721779868, 0.0004394990016034706, 0.0003210266687729331, 0.00023892905408671853, 0.0001793587936998455, 0.00016173476842999915, 0.00013116489759876609, 0.00010406669250640404, 8.08817227216705e-05, 7.331521734687509e-05, 5.952796051729625e-05, 4.3472233225090505e-05, 3.992862310285069e-05, 3.0788271198775396e-05, 2.3263077194906992e-05, 2.0835969283592946e-05, 1.5944681074746935e-05, 1.1667698267310537e-05, 1.0428658768914531e-05, 9.219340841509037e-06]
-        #     y2 = [0.4132777650437498, 0.10900206579852059, 0.04304723661158948, 0.019790866004557914, 0.0173899784618795, 0.00919454209881029, 0.00533416680802362, 0.0032815320614890705, 0.0021013983841605376, 0.0012383706309839274, 0.001108526709186729, 0.0008554347544238323, 0.0005879980360637433, 0.00033688467251972125, 0.0002289166383253578, 0.00016953465650786006, 0.0001471871476948809, 0.0001359497401639505, 0.00013130520676955888, 0.00012874834276644932, 0.00012702559341848705, 0.0001243358277666199, 0.00012220607912159703, 0.0001208595973945776, 0.0001196949488753961, 0.0001179960584451521, 0.00011556615584759931, 0.00011156544177030193]
-        #     dis2 = [1.3732700395566712e-14, 5.197930934883577e-15, 2.1354411886641158e-14, 1.1682163181672949e-14, 2.3228879851839006e-14, 1.6213818077951355e-14, 2.5510982866352577e-15, 1.4073144318774333e-14, 6.936895214610187e-15, 1.3617327804437774e-14, 6.1894311297400655e-15, 9.272854936269104e-15, 1.0168091383860044e-14, 4.440892098500626e-16, 9.155133597044475e-16, 6.7678088263037544e-15, 7.49708873476879e-15, 3.4684476073050936e-15, 1.0583867371683362e-14, 5.895691955682626e-15, 5.5688503603976495e-15, 1.4895204919483639e-15, 2.0350724194510405e-15, 8.005932084973442e-16, 5.407139474782739e-15, 8.251579053847122e-15, 6.481268641478987e-15]
-        # elif exId == 1:
-        #     y2 = [4.583942360418052, 2.81094956129878, 1.9234202203092372, 1.3916583255859225, 1.0391746081045068, 0.7903424350935518, 0.6073073415725962, 0.4689573180627072, 0.36251548033588216, 0.27972601649963214, 0.21495610641583365, 0.16418292409612206, 0.12442280046862852, 0.0933949808936162, 0.07069924902299905, 0.05271217221164481, 0.04160370287727804, 0.03443809801046807, 0.028259962818351494, 0.013615429442757454, 0.0020869354161929705, 0.0015551604505555235]
-        #     # dis2 = [2.582050345126043e-14, 1.7373837509653234e-14, 1.2932072993408848e-14, 2.182033134733423e-14,
-        #     #         1.3455701531316242e-14, 8.95090418262362e-16, 8.926082647349967e-15, 4.010656666373001e-15,
-        #     #         9.551144859011592e-15, 1.1102230246251565e-16, 9.483150488903745e-15, 8.074153716986702e-15, 0.0,
-        #     #         3.233018248352212e-15, 3.978256139440565e-15, 8.95090418262362e-16, 3.2953244754398602e-15,
-        #     #         4.453364592678439e-15, 4.463041323674983e-15, 2.673771110915334e-15, 4.551914400963142e-15,
-        #     #         3.2709212810858e-15, 2.175583928816829e-15, 9.155133597044475e-16, 8.95090418262362e-16,
-        #     #         3.2709212810858e-15, 3.3232593448441795e-15, 9.155133597044475e-16, 2.7217452008024307e-15,
-        #     #         2.7012892057857038e-15, 9.485749680535094e-16, 9.930136612989092e-16, 2.0137621733714643e-15,
-        #     #         9.485749680535094e-16, 1.9891280697202825e-15, 1.1102230246251565e-16, 8.881784197001252e-16]
-        #     dis2 = [1.2468155522574926e-14, 8.992121150493565e-15, 1.8444410139024814e-15, 8.895651159694986e-15, 5.407139474782739e-15, 1.8444410139024814e-15, 1.9100999153570945e-15, 1.9860273225978185e-15, 1.831026719408895e-15, 5.352150186685534e-15, 5.338314359524835e-15, 1.790180836524724e-15, 1.7763568394002505e-15, 1.831026719408895e-15, 7.242875823676482e-15, 3.580361673049448e-15, 5.407139474782739e-15, 3.66205343881779e-15, 5.497566137053743e-15, 1.790180836524724e-15, 4.440892098500626e-16]
-        #
-        # plotTraceTogether(trace_array, y2, exId)
-        # plotDistantFromTarget(dis_array, exId)
-        # plotLocErrorTogether(error_array, dis2, exId)
+        # plotTrace(trace_array, exId)
+        drawTrajectoryTogether(x, z, x_nbv, z_nbv, targetPositionW, exId)
+
 
         print("Average error: {0}".format(np.mean(error_array)))
 
@@ -569,9 +656,9 @@ def setAgentPosition(agent, nextBestCameraPostionIncy):
     nextBestCameraPosition = nextBestCameraPostionIncy + R_w_c.dot(tcyclopean_leftcamera)
 
     agent_state = agent.get_state()
-    # y = agent_state.position[1]c
-    y = nextBestCameraPostionIncy[1]
-    agent_state.position = np.array([nextBestCameraPosition[0]+cam_baseline/2, y-1.5, nextBestCameraPosition[2]])
+    y = agent_state.position[1]
+    # y = nextBestCameraPostionIncy[1]-1.5
+    agent_state.position = np.array([nextBestCameraPosition[0]+cam_baseline/2, y, nextBestCameraPosition[2]])
     agent.set_state(agent_state)
     return agent.state  # agent.scene_node.transformation_matrix()
 
@@ -848,6 +935,26 @@ def project(agent, targetPositionW):
     xR = (cam_focalLength * targetPositionC[0]) / targetPositionC[2] + cx
     y = (cam_focalLength * targetPositionC[1]) / targetPositionC[2] + cy
     return np.array([xR, y])
+
+def computeObsCovarianceForFixedMove(agent, depth_pair, targetPositionW):
+    pixels = targetPixelInCurrentCamera(agent, targetPositionW)
+
+    isValid = isObserved(pixels)
+
+    if isValid:
+        pixels_withoutOffset = np.array([pixels[0] - cx, pixels[1] - cx, pixels[2] - cy])
+        J = makeJacobian(pixels_withoutOffset)
+        Q = makeQ(depth_pair[int(pixels[2]), int(pixels[0])])
+
+        R_w_s = quaternion.as_rotation_matrix(agent.get_state().sensor_states["left_sensor"].rotation)
+
+        R = R_w_s.dot(R_s_c)
+
+        U_obs = np.linalg.multi_dot([R, J, Q, J.T, R.T])
+
+        return True, U_obs
+    else:
+        return False, np.identity(3)
 
 def computeObsCovariance(agent, depth_pair, targetPositionW):
 

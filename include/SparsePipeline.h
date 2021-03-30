@@ -38,13 +38,15 @@ namespace AVP
 
         int SelectActiveKeyPoint();
 
-        Eigen::Vector3d GradientBasedOnNextBestTargetLocation(const int &kpIndex, Eigen::Matrix3d &U_obs, Eigen::Matrix3d &U_prior, Eigen::Matrix3d &Rwc, Eigen::Vector3d &twc);
-        
+        //Gradient of objective function respect to target position using cyclopean coordinate
+        Eigen::Vector3d GradientForTarget(const Eigen::Vector3d &input, const float &depth, Eigen::Matrix3d &U_prior, Eigen::Matrix3d &Rwc);
+
+        //Gradient of objective function respect to target position using left camera coordinate
         Eigen::Vector3d Gradient(const Eigen::Vector3d &input, const float &depth, Eigen::Matrix3d &U_prior, Eigen::Matrix3d &Rwc);
 
         Eigen::Vector3d GradientofCameraTranslation(const Eigen::Vector3d &input, const float &depth, Eigen::Matrix3d &U_prior, Eigen::Matrix3d &Rwc);
 
-        Eigen::Matrix3d MakeJacobian(const Eigen::Vector3d &input, const float baseline);
+        Eigen::Matrix3d MakeJacobian(const Eigen::Vector3d &input);
 
         Eigen::Matrix3d MakeQ(const int level);
         //Update posterior

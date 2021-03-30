@@ -20,7 +20,7 @@ namespace AVP{
                 .def("DelaunayTriangulation", &SparsePipline::DelaunayTriangulation)
                 .def("StereoInitialization", &SparsePipline::StereoInitialization)
                 .def("SelectActiveKeyPoint", &SparsePipline::SelectActiveKeyPoint)
-                .def("GradientBasedOnNextBestTargetLocation", &SparsePipline::GradientBasedOnNextBestTargetLocation)
+                .def("GradientForTarget", &SparsePipline::GradientForTarget)
                 .def("Gradient", &SparsePipline::Gradient)
                 .def("GradientofCameraTranslation", &SparsePipline::GradientofCameraTranslation)
                 .def("WritePTCloud", &SparsePipline::WritePTCloud)
