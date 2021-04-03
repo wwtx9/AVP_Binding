@@ -41,8 +41,8 @@ SparsePipline::SparsePipline(const string &strSettingPath)
     DistCoef.copyTo(mDistCoef);
 
     mbf = fSettings["Camera.bf"];
-    mb = mbf/fx;
-
+    mb = fSettings["Camera.baseline"];
+    
     float fps = fSettings["Camera.fps"];
     if(fps==0)
         fps=30;
@@ -61,7 +61,7 @@ SparsePipline::SparsePipline(const string &strSettingPath)
     cout << "- p2: " << DistCoef.at<float>(3) << endl;
     cout << "- fps: " << fps << endl;
 
-
+    cout<<"- stereo baseline: "<<mb<<endl;
     int nRGB = fSettings["Camera.RGB"];
     mbRGB = nRGB;
 
@@ -424,16 +424,18 @@ Eigen::Vector3d SparsePipline::GradientForTarget(const Eigen::Vector3d &input, c
             mb*(-xL-xR)/xL_xR_3, -2*mb*y/xL_xR_3, -2*mb*fx/xL_xR_3,
             0, -mb/xL_xR_2, 0;
 
+    dJT_dxL = dJ_dxL.transpose();
+
     //dJT_dxR
     dJT_dxR << -mb*(xR+xL)/xL_xR_3, -2*mb*y/xL_xR_3, -2*mb*fx/xL_xR_3,
             2*mb*xL/xL_xR_3, 2*mb*y/xL_xR_3, 2*mb*fx/xL_xR_3,
             0, mb/xL_xR_2, 0;
-
+    dJT_dxR = dJ_dxR.transpose(); 
     //dJT_dy
     dJT_dy << 0, -mb/xL_xR_2, 0,
             0, mb/xL_xR_2, 0,
             0, 0, 0;
-
+    dJT_dy = dJ_dy.transpose(); 
     
     //v = x
     //dxL_dpx

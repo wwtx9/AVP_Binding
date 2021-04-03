@@ -72,27 +72,8 @@ def makeQ(depth):
 
     return Q
 
+#Compute camera's next position in world coordiante
 def computeCameraTranslation(agent,targetCurrentPosition, targetNextPosition):
-
-    # R_w_s = quaternion.as_rotation_matrix(agent.state.sensor_states["left_sensor"].rotation)
-    # targetC = targetNextPosition + tleftcamera_cyclopean
-    # Rwc = R_w_s.dot(R_s_c)
-    # tws = agent.state.sensor_states["left_sensor"].position
-    #
-    # targetW = Rwc.dot(targetC) + tws
-    #
-    # twcy = tws - Rwc.dot(tcyclopean_leftcamera)
-    #
-    # delta_twcy = 2 * (Rwc.dot(targetNextPosition) + twcy - targetW_)
-    #
-    # delta_twcy = delta_twcy / np.linalg.norm(delta_twcy)
-    #
-    # nextBestCameraPositionCy = twcy - 0.25 * delta_twcy
-    #
-    # print("delta_tws: {0}, norm of delta_tws: {1}".format(twcy, np.linalg.norm(twcy)))
-    # print("nextBestCameraPostion: {0}".format(nextBestCameraPositionCy))
-    # return nextBestCameraPositionCy
-
     twc1 = agent.state.sensor_states["left_sensor"].position  # twc at tk-1
     Rws1 = quaternion.as_rotation_matrix(agent.get_state().sensor_states["left_sensor"].rotation)
     Rwc1 = Rws1.dot(R_s_c)
@@ -115,7 +96,7 @@ def computeCameraTranslation(agent,targetCurrentPosition, targetNextPosition):
     print("nextBestCameraPostion: {0}".format(nextBestCameraPositionInCy))
     return nextBestCameraPositionInCy
 
-
+#Having the z axis of the midpoint between the cameras point at the feature point
 def rotateCameraToMidpoint(targetPositionCyNext_):
     if targetPositionCyNext_[0] < 0:
         tan_theta = abs(targetPositionCyNext_[0]/targetPositionCyNext_[2])
@@ -131,33 +112,6 @@ def rotateCameraToMidpoint(targetPositionCyNext_):
     else:
         return np.identity(3)
 
-
-def computeCameraRotation(agent, targetCurrentPosition, targetNextPosition, R):
-    twc1 = agent.state.sensor_states["left_sensor"].position  # twc at tk-1
-    Rws1 = quaternion.as_rotation_matrix(agent.get_state().sensor_states["left_sensor"].rotation)
-    Rwc1 = Rws1.dot(R_s_c)
-    Rwcy1 = Rwc1  # R(tk-1)
-    twcy1 = twc1 - Rwcy1.dot(tcyclopean_leftcamera)  #twcy at tk-1
-
-    r_star = twcy1 + Rwcy1.dot(targetNextPosition - targetCurrentPosition)
-    r_star = r_star[np.newaxis].T
-
-    targetW = Rwcy1.dot(targetCurrentPosition) + twcy1
-    targetW = targetW[np.newaxis].T
-
-    z_hat = (targetW - r_star)/np.linalg.norm(targetW - r_star)
-
-    e3 = np.array([0, 0, 1])[np.newaxis].T
-
-    R1 = np.linalg.multi_dot([R.T, z_hat, (R.T.dot(z_hat)-e3).T])
-    R2 = np.linalg.multi_dot([R.T.dot(z_hat) - e3, z_hat.T, R])
-    delta_R = R1 - R2
-
-    R = R.dot(delta_R)
-
-    R = R + delta_R
-
-    return R
 
 def computeLocError(agent, input, targetW_, Rwcy):
     input = np.array([input[0]-cx, input[1]-cx, input[2]-cy])
@@ -196,9 +150,9 @@ def drawTrajectory(x_nbv, z_nbv, targetPositionW, exId):
     plt.legend(["Gradient Descent", "Target"])
     # plt.yscale('log')
     plt.title("Experiment {0}'s trajectory".format(exId+1))
-    plt.gca().set_aspect('equal', adjustable='box')
+    # plt.gca().set_aspect('equal', adjustable='box')
     plt.show()
-    # fig.savefig('Experiment_{0}_traj.png'.format(exId+1), dpi=fig.dpi)
+    fig.savefig('Experiment_{0}_traj.png'.format(exId+1), dpi=fig.dpi)
     # fig.savefig('trajectory.png', dpi=fig.dpi)
 
 def plotTraceTogether(y1_data, y2_data, id):
@@ -323,213 +277,101 @@ def _render(sim, isdepth=False):
         error_array = []
         trace_array = []
         dis_array = []
-        # stereo_pair = np.concatenate([leftImg, rightImg], axis=1)
-        #
-        # cv2.imshow("stereo_pair", stereo_pair)
-        # cv2.waitKey(1000)
 
-        # time k = 0
         x_nbv = []
         z_nbv = []
-        agent.set_state(init_state)
-
-        # new feature point in pixel coordinate
-        input = np.array([inputs[exId][0], inputs[exId][1], inputs[exId][2]])
-        # test
-        input = np.array([198, 186, 373])
-        obs = sim.get_sensor_observations()
-        # stereo_pair = np.concatenate([obs["left_sensor"], obs["right_sensor"]], axis=1)
-        # if len(stereo_pair.shape) > 2:
-        #     stereo_pair = stereo_pair[..., 0:3][..., ::-1]
-        # cv2.imshow("stereo_pair", stereo_pair)
-        #
-        # keystroke = cv2.waitKey(1000)
-        # if keystroke == ord("q"):
-        #     break
-        targetPositionW = targetWordCoordinate(agent, 198, 186, 373) #917, 905, 322   198, 186, 373
-        # targetPositionW = targetWordCoordinate(agent, input[0], input[1], input[2])  #left: 198, 186, 373 right: 917,905,322 437, 431, 293
-        # input_withoutOffset = np.array([input[0]-cx, input[1]-cx, input[2]-cy])
-        # targetPositionCy = targetPositionIncycolpean(input_withoutOffset)
-        # Rws = quaternion.as_rotation_matrix(agent.get_state().sensor_states["left_sensor"].rotation)
-        # Rwc = Rws.dot(R_s_c)
-        # Rwcy = Rwc  # R(tk-1)
-        #
-        # R = rotateCameraToMidpoint(targetPositionCy)
-        # t = R.dot(targetPositionCy)
-        # print(t)
-        # Rwcy_next = Rwcy.dot(R.T)
-        # setAgentRotation(agent, Rwcy_next)
-
-        print("project on right image pixel: {0}".format(project(agent, targetPositionW)))
-
-        depth_pair = np.concatenate([obs["left_sensor_depth"], obs["right_sensor_depth"]], axis=1)
-
-        depth_pair = np.clip(depth_pair, 0, 10)
-
-
-
-        # depth of target
-        depth = depth_pair[int(input[2]), int(input[0])]
-
-        input_withoutOffset = np.array([input[0]-cx, input[1]-cx, input[2]-cy])
-        J = makeJacobian(input_withoutOffset)
-
-        Q = makeQ(depth)
-
-        U_obs = computeCovarianceByPixel(agent, J, Q)
-
-        # x_nbv.append(agent.state.position[0])
-        # z_nbv.append(agent.state.position[2])
-
-
-        # Next target and camera position, timestep k = 1
-        U_prior = U_obs
-
-        R_w_s = quaternion.as_rotation_matrix(agent.get_state().sensor_states["left_sensor"].rotation)
-        R_w_c = R_w_s.dot(R_s_c)  # R_w_c
-
-        # Uk+1|k, Uobs
-        delta = sp.GradientForTarget(input_withoutOffset, depth, U_prior, R_w_c)
-
-        print("delta 0: {0}".format(delta/np.linalg.norm(delta)))
-        #predict next best target position and camera position
-        targetPositionCy, targetPositionCyNext = getNextBestPositionofFeature(input_withoutOffset, delta)
-        print("targetPositionCNext in cyclopean coordinate: {0}".format(targetPositionCyNext))
-        twc = agent.state.sensor_states["left_sensor"].position  # twc at tk-1
-        Rws = quaternion.as_rotation_matrix(agent.get_state().sensor_states["left_sensor"].rotation)
-        Rwc = Rws.dot(R_s_c)
-        Rwcy = Rwc  # R(tk-1)
-
-        nextBestCameraPostionIncy = computeCameraTranslation(agent, targetPositionCy, targetPositionCyNext)
-        R = rotateCameraToMidpoint(targetPositionCyNext)
-        t = R.dot(targetPositionCyNext)
-        print(t)
-        Rwcy_rectify = Rwcy.dot(R.T)
-        # print("Rwcy_next : {0}".format(Rwcy_rectify))
-
-
-        x_nbv.append(nextBestCameraPostionIncy[0])
-        z_nbv.append(nextBestCameraPostionIncy[2])
-
-        # update camera position
-
-        # nextBestCameraPostionIncy = np.array([-1.7926959, 1.6196585, 19.005245])
-        setAgentPosition(agent, nextBestCameraPostionIncy)
-        setAgentRotation(agent, Rwcy_rectify)
-
-
-
-        #viz
-        # obs = sim.get_sensor_observations()
-        # stereo_pair = np.concatenate([obs["left_sensor"], obs["right_sensor"]], axis=1)
-        # if len(stereo_pair.shape) > 2:
-        #     stereo_pair = stereo_pair[..., 0:3][..., ::-1]
-        # cv2.imshow("stereo_pair", stereo_pair)
-        #
-        # keystroke = cv2.waitKey(1000)
-        # if keystroke == ord("q"):
-        #     break
-
-        # obs = sim.step("turn_right")
-        # obs = sim.step("turn_right")
-        # obs = sim.step("turn_right")
-
-
 
         # chose fix move and do gradient descent
-        for i in range(1, 200):  # np.sqrt(loc_error) > 1e-3:
+        for i in range(0, 200):  # np.sqrt(loc_error) > 1e-3:
             print("+++++++++++++Step {0}++++++++".format(i))
             print("Current Agent's state: {0}".format(agent.state))
-            input = targetPixelInCurrentCamera(agent, targetPositionW)
-            # print(input)
+            obs = sim.get_sensor_observations()
+            if i == 0:
+                # input = np.array([inputs[exId][0], inputs[exId][1], inputs[exId][2]])
+                input = np.array([198, 186, 373])
+                targetPositionW = targetWordCoordinate(agent, 198, 186, 373)  # 917, 905, 322   198, 186, 373
 
-            if not isObserved(input):
-                print("Feature point can not be observed by camera")
-                break
+                # targetPositionW = targetWordCoordinate(agent, input[0], input[1], input[2])  #left: 198, 186, 373 right: 917,905,322 437, 431, 293
             else:
-                R_w_s = quaternion.as_rotation_matrix(agent.get_state().sensor_states["left_sensor"].rotation)
-                R_w_c = R_w_s.dot(R_s_c)
-
-                err = computeLocError(agent, input, targetPositionW, R_w_c)
-                error_array.append(err)
-
-                dis = computeDistanceFromTarget(agent, targetPositionW)
-                dis_array.append(dis)
-                # print("loc error: {0}".format(err))
-
-                depth_pair = np.concatenate([obs["left_sensor_depth"], obs["right_sensor_depth"]], axis=1)
-
-                depth_pair = np.clip(depth_pair, 0, 10)
-
-                U_obs = computeObsCovariance(agent, depth_pair, targetPositionW)
-
-                U_post, trace = objectiveFun(U_prior, U_obs)
-                trace_array.append(trace)
-
-                print("Current Agent's trace: {0}".format(trace))
-
-                #visualize
-                obs = sim.get_sensor_observations()
-                stereo_pair = np.concatenate([obs["left_sensor"], obs["right_sensor"]], axis=1)
-                if len(stereo_pair.shape) > 2:
-                    stereo_pair = stereo_pair[..., 0:3][..., ::-1]
-                cv2.imshow("stereo_pair", stereo_pair)
-
-                keystroke = cv2.waitKey(0)
-                if keystroke == ord("q"):
+                input = targetPixelInCurrentCamera(agent, targetPositionW)
+                print("current input:{0}".format(input))
+                if not isObserved(input):
+                    print("Feature point can not be observed by camera")
                     break
 
-                # Predict next best position of target and camera at time k+1 base on current observation at time k
-                depth = depth_pair[int(input[2]), int(input[0])]
-                input_withoutOffset = np.array([input[0] - cx, input[1] - cx, input[2] - cy])
-                delta = sp.GradientForTarget(input_withoutOffset, depth, U_prior, R_w_c)
+            R_w_s = quaternion.as_rotation_matrix(agent.get_state().sensor_states["left_sensor"].rotation)
+            R_w_c = R_w_s.dot(R_s_c)
 
-                print("delta 0: {0}".format(delta/np.linalg.norm(delta)))
-                targetPositionCy, targetPositionCyNext = getNextBestPositionofFeature(input_withoutOffset, delta)
-                print("targetPositionCNext in cyclopean coordinate: {0}".format(targetPositionCyNext))
+            err = computeLocError(agent, input, targetPositionW, R_w_c)
+            error_array.append(err)
 
-                # twc = agent.state.sensor_states["left_sensor"].position  # twc at tk-1
-                Rws = quaternion.as_rotation_matrix(agent.get_state().sensor_states["left_sensor"].rotation)
-                Rwc = Rws.dot(R_s_c)
-                Rwcy = Rwc  # R(tk-1)
+            dis = computeDistanceFromTarget(agent, targetPositionW)
+            dis_array.append(dis)
+            # print("loc error: {0}".format(err))
 
-                nextBestCameraPostionIncy = computeCameraTranslation(agent, targetPositionCy, targetPositionCyNext)
-                R = rotateCameraToMidpoint(targetPositionCyNext) #Rck-1ck
-                Rwcy_rectify = Rwcy.dot(R.T)
-                # # nextBestCameraRotation = computeCameraRotation(agent, targetPositionCy, targetPositionCyNext, Rwcy)
-                x_nbv.append(nextBestCameraPostionIncy[0])
-                z_nbv.append(nextBestCameraPostionIncy[2])
+            #compute U_obs and posterior
+            depth_pair = np.concatenate([obs["left_sensor_depth"], obs["right_sensor_depth"]], axis=1)
 
-                # update camera position
-                setAgentPosition(agent, nextBestCameraPostionIncy)
+            depth_pair = np.clip(depth_pair, 0, 10)
 
-                # setAgentRotation(agent, Rwcy_rectify)
-                # print("Current Agent's state after Gradient Descend with rotation: {0}".format(agent.state))
+            U_obs = computeObsCovariance(agent, depth_pair, targetPositionW)
 
-                U_prior = U_post
+            if i == 0:
+                U_prior = U_obs
+
+            U_post, trace = objectiveFun(U_prior, U_obs)
+
+            trace_array.append(trace)
+
+            print("Current Agent's trace: {0}".format(trace))
+
+            #visualize
+            # obs = sim.get_sensor_observations()
+            # stereo_pair = np.concatenate([obs["left_sensor"], obs["right_sensor"]], axis=1)
+            # if len(stereo_pair.shape) > 2:
+            #     stereo_pair = stereo_pair[..., 0:3][..., ::-1]
+            # cv2.imshow("stereo_pair", stereo_pair)
+            #
+            # keystroke = cv2.waitKey(0)
+            # if keystroke == ord("q"):
+            #     break
+
+            # Predict next best position of target and camera at time k+1 base on current observation at time k
+            depth = depth_pair[int(input[2]), int(input[0])]
+            print("depth: {0}".format(depth))
+            input_withoutOffset = np.array([input[0] - cx, input[1] - cx, input[2] - cy])
+            print("input_withoutOffset: {0}".format(input_withoutOffset))
+            print("U_prior: {0}".format(U_prior))
+            print("U_obs: {0}".format(U_obs))
+            delta = sp.GradientForTarget(input_withoutOffset, depth, U_prior, R_w_c)
+            print("delta: {0}".format(delta/np.linalg.norm(delta)))
+            targetPositionCy, targetPositionCyNext = getNextBestPositionofFeature(input_withoutOffset, delta)
+            print("targetPositionCNext in cyclopean coordinate: {0}".format(targetPositionCyNext))
+
+            #compute next best position for camera
+            nextBestCameraPostionIncy = computeCameraTranslation(agent, targetPositionCy, targetPositionCyNext)
+            # compute next best rotation for camera
+            R = rotateCameraToMidpoint(targetPositionCyNext) #Rck-1ck
+            Rws = quaternion.as_rotation_matrix(agent.get_state().sensor_states["left_sensor"].rotation)
+            Rwc = Rws.dot(R_s_c)
+            Rwcy = Rwc  # R(tk-1)
+            Rwcy_rectify = Rwcy.dot(R.T)
+
+            x_nbv.append(nextBestCameraPostionIncy[0])
+            z_nbv.append(nextBestCameraPostionIncy[2])
+
+            # update camera position
+            setAgentPosition(agent, nextBestCameraPostionIncy)
+
+            setAgentRotation(agent, Rwcy_rectify)
+
+            U_prior = U_post
 
 
-        # exId = 2
-        # drawTrajectory(x_nbv, z_nbv, targetPositionW, exId)
+        drawTrajectory(x_nbv, z_nbv, targetPositionW, exId)
         # plotLocError(error_array, exId)
-        plotTrace(trace_array, exId)
-        # if exId == 0:
-        # # y2 = [2.305539769016563, 0.8263557457755599, 0.3540837839763306, 0.1720042645012877, 0.0916494988566281, 0.04586429366700652, 0.02686729433471213, 0.016794677570824344, 0.0108787178831339, 0.007213834661898134, 0.004384054062706234, 0.003957583555667254, 0.0030890447312009483, 0.0021548619776846, 0.001545658994013445, 0.0011246652873587344, 0.0008253481522115234, 0.0006085378702942314, 0.0005463067721779868, 0.0004394990016034706, 0.0003210266687729331, 0.00023892905408671853, 0.0001793587936998455, 0.00016173476842999915, 0.00013116489759876609, 0.00010406669250640404, 8.08817227216705e-05, 7.331521734687509e-05, 5.952796051729625e-05, 4.3472233225090505e-05, 3.992862310285069e-05, 3.0788271198775396e-05, 2.3263077194906992e-05, 2.0835969283592946e-05, 1.5944681074746935e-05, 1.1667698267310537e-05, 1.0428658768914531e-05, 9.219340841509037e-06]
-        #     y2 = [0.4132777650437498, 0.10900206579852059, 0.04304723661158948, 0.019790866004557914, 0.0173899784618795, 0.00919454209881029, 0.00533416680802362, 0.0032815320614890705, 0.0021013983841605376, 0.0012383706309839274, 0.001108526709186729, 0.0008554347544238323, 0.0005879980360637433, 0.00033688467251972125, 0.0002289166383253578, 0.00016953465650786006, 0.0001471871476948809, 0.0001359497401639505, 0.00013130520676955888, 0.00012874834276644932, 0.00012702559341848705, 0.0001243358277666199, 0.00012220607912159703, 0.0001208595973945776, 0.0001196949488753961, 0.0001179960584451521, 0.00011556615584759931, 0.00011156544177030193]
-        #     dis2 = [1.3732700395566712e-14, 5.197930934883577e-15, 2.1354411886641158e-14, 1.1682163181672949e-14, 2.3228879851839006e-14, 1.6213818077951355e-14, 2.5510982866352577e-15, 1.4073144318774333e-14, 6.936895214610187e-15, 1.3617327804437774e-14, 6.1894311297400655e-15, 9.272854936269104e-15, 1.0168091383860044e-14, 4.440892098500626e-16, 9.155133597044475e-16, 6.7678088263037544e-15, 7.49708873476879e-15, 3.4684476073050936e-15, 1.0583867371683362e-14, 5.895691955682626e-15, 5.5688503603976495e-15, 1.4895204919483639e-15, 2.0350724194510405e-15, 8.005932084973442e-16, 5.407139474782739e-15, 8.251579053847122e-15, 6.481268641478987e-15]
-        # elif exId == 1:
-        #     y2 = [4.583942360418052, 2.81094956129878, 1.9234202203092372, 1.3916583255859225, 1.0391746081045068, 0.7903424350935518, 0.6073073415725962, 0.4689573180627072, 0.36251548033588216, 0.27972601649963214, 0.21495610641583365, 0.16418292409612206, 0.12442280046862852, 0.0933949808936162, 0.07069924902299905, 0.05271217221164481, 0.04160370287727804, 0.03443809801046807, 0.028259962818351494, 0.013615429442757454, 0.0020869354161929705, 0.0015551604505555235]
-        #     # dis2 = [2.582050345126043e-14, 1.7373837509653234e-14, 1.2932072993408848e-14, 2.182033134733423e-14,
-        #     #         1.3455701531316242e-14, 8.95090418262362e-16, 8.926082647349967e-15, 4.010656666373001e-15,
-        #     #         9.551144859011592e-15, 1.1102230246251565e-16, 9.483150488903745e-15, 8.074153716986702e-15, 0.0,
-        #     #         3.233018248352212e-15, 3.978256139440565e-15, 8.95090418262362e-16, 3.2953244754398602e-15,
-        #     #         4.453364592678439e-15, 4.463041323674983e-15, 2.673771110915334e-15, 4.551914400963142e-15,
-        #     #         3.2709212810858e-15, 2.175583928816829e-15, 9.155133597044475e-16, 8.95090418262362e-16,
-        #     #         3.2709212810858e-15, 3.3232593448441795e-15, 9.155133597044475e-16, 2.7217452008024307e-15,
-        #     #         2.7012892057857038e-15, 9.485749680535094e-16, 9.930136612989092e-16, 2.0137621733714643e-15,
-        #     #         9.485749680535094e-16, 1.9891280697202825e-15, 1.1102230246251565e-16, 8.881784197001252e-16]
-        #     dis2 = [1.2468155522574926e-14, 8.992121150493565e-15, 1.8444410139024814e-15, 8.895651159694986e-15, 5.407139474782739e-15, 1.8444410139024814e-15, 1.9100999153570945e-15, 1.9860273225978185e-15, 1.831026719408895e-15, 5.352150186685534e-15, 5.338314359524835e-15, 1.790180836524724e-15, 1.7763568394002505e-15, 1.831026719408895e-15, 7.242875823676482e-15, 3.580361673049448e-15, 5.407139474782739e-15, 3.66205343881779e-15, 5.497566137053743e-15, 1.790180836524724e-15, 4.440892098500626e-16]
-        #
+        # plotTrace(trace_array, exId)
+
         # plotTraceTogether(trace_array, y2, exId)
         # plotDistantFromTarget(dis_array, exId)
         # plotLocErrorTogether(error_array, dis2, exId)
@@ -543,23 +385,6 @@ def computeDistanceFromTarget(agent, targetPositionW_):
     dis = np.linalg.norm(dis)
     return dis
 
-def computeCameraPostion(agent, targetPositionNext_, targetPositionW_):
-
-    R_w_s = quaternion.as_rotation_matrix(agent.state.sensor_states["left_sensor"].rotation)
-
-    tws = agent.state.sensor_states["left_sensor"].position
-
-    targetPositionNextS_ = R_s_c.dot(targetPositionNext_)
-
-    delta_tws = 2 * (R_w_s.dot((targetPositionNextS_)) + tws - targetPositionW_)
-
-    delta_tws = delta_tws / np.linalg.norm(delta_tws)
-
-    nextBestCameraPosition = tws - 0.25 * delta_tws
-
-    # print("delta_tws: {0}, norm of delta_tws: {1}".format(delta_tws, np.linalg.norm(delta_tws)))
-    print("nextBestCameraPostion: {0}".format(nextBestCameraPosition))
-    return nextBestCameraPosition
 
 def setAgentPosition(agent, nextBestCameraPostionIncy):
 
@@ -569,9 +394,9 @@ def setAgentPosition(agent, nextBestCameraPostionIncy):
     nextBestCameraPosition = nextBestCameraPostionIncy + R_w_c.dot(tcyclopean_leftcamera)
 
     agent_state = agent.get_state()
-    # y = agent_state.position[1]c
-    y = nextBestCameraPostionIncy[1]
-    agent_state.position = np.array([nextBestCameraPosition[0]+cam_baseline/2, y-1.5, nextBestCameraPosition[2]])
+    y = agent_state.position[1]
+    # y = nextBestCameraPostionIncy[1]-1.5
+    agent_state.position = np.array([nextBestCameraPosition[0]+cam_baseline/2, y, nextBestCameraPosition[2]])
     agent.set_state(agent_state)
     return agent.state  # agent.scene_node.transformation_matrix()
 
@@ -661,39 +486,6 @@ def drawFeaturePoints(input, leftIm, rightIm, KPs, uRights):
                 cv2.circle(rightIm, (xR, y), 2, (0, 255, 0), -1)
 
     return leftIm, rightIm
-
-
-def computeTargetPositionOnWorldFrame(agent, targetPositionW_):
-
-    pixels = targetPixelInCurrentCamera(agent, targetPositionW_)
-
-    if isObserved(pixels):
-        uL = pixels[0]
-        uR = pixels[1]
-        v = pixels[2]
-
-        zc = cam_focalLength * cam_baseline / (uL - uR)
-        xc = zc * (uL - cx) / cam_focalLength  # xc 3d in cam
-        yc = zc * (v - cy) / cam_focalLength  # yc
-
-        targetPositionC = np.array([xc, yc, zc])
-
-        # print("targetPosition camera frame: {0}".format(targetPositionC))
-        targetPositionS = R_s_c.dot(targetPositionC)
-
-        q = agent.state.sensor_states["left_sensor"].rotation
-        R_w_s = quaternion.as_rotation_matrix(q)
-
-        t_w_s = agent.state.sensor_states["left_sensor"].position
-        # print("targetPosition sensor frame without translate value: {0}".format(R_w_s.dot(targetPositionS)))
-        targetPositionW = R_w_s.dot(targetPositionS) + t_w_s
-        # print("targetPosition world value in this episode by taking fixed action: {0}".format(targetPositionW))
-        delta_position = targetPositionW - targetPositionW_
-        mse_loc = np.linalg.norm(delta_position)
-        # print("Mean Square Error: {0}".format(mse_loc))
-        return True, targetPositionW, mse_loc
-    else:
-        return False, -1, -1
 
 
 def setupAgentwithSensors(display=True):
@@ -837,17 +629,17 @@ def targetPixelInCurrentCamera(agent, targetPositionW):
     return np.array([xL, xR, y])
 
 
-def project(agent, targetPositionW):
-    R_c_s = R_s_c.T
-    R_w_sr = quaternion.as_rotation_matrix(agent.state.sensor_states["right_sensor"].rotation)
-    t_w_sr = agent.state.sensor_states["right_sensor"].position
-    R_sr_w = R_w_sr.T
-    t_sr_w = -1 * R_sr_w.dot(t_w_sr)
-    targetPositionS = R_sr_w.dot(targetPositionW) + t_sr_w  # sensor
-    targetPositionC = R_c_s.dot(targetPositionS)
-    xR = (cam_focalLength * targetPositionC[0]) / targetPositionC[2] + cx
-    y = (cam_focalLength * targetPositionC[1]) / targetPositionC[2] + cy
-    return np.array([xR, y])
+# def project(agent, targetPositionW):
+#     R_c_s = R_s_c.T
+#     R_w_sr = quaternion.as_rotation_matrix(agent.state.sensor_states["right_sensor"].rotation)
+#     t_w_sr = agent.state.sensor_states["right_sensor"].position
+#     R_sr_w = R_w_sr.T
+#     t_sr_w = -1 * R_sr_w.dot(t_w_sr)
+#     targetPositionS = R_sr_w.dot(targetPositionW) + t_sr_w  # sensor
+#     targetPositionC = R_c_s.dot(targetPositionS)
+#     xR = (cam_focalLength * targetPositionC[0]) / targetPositionC[2] + cx
+#     y = (cam_focalLength * targetPositionC[1]) / targetPositionC[2] + cy
+#     return np.array([xR, y])
 
 def computeObsCovariance(agent, depth_pair, targetPositionW):
 
@@ -866,17 +658,6 @@ def computeObsCovariance(agent, depth_pair, targetPositionW):
 
     return U_obs
 
-
-# init
-def computeCovarianceByPixel(agent, J, Q):
-    R_w_s = quaternion.as_rotation_matrix(agent.get_state().sensor_states["left_sensor"].rotation)
-    R = R_w_s.dot(R_s_c)
-
-    U_obs = np.linalg.multi_dot([R, J, Q, J.T, R.T])
-
-    return U_obs
-
-
 # update posterior and computer objective function
 def objectiveFun(U_prior, U_obs):
     U_post = (inv(U_prior) + inv(U_obs))
@@ -884,9 +665,6 @@ def objectiveFun(U_prior, U_obs):
 
     return U_post, U_post[0, 0] + U_post[1, 1] + U_post[2, 2]
 
-
-def objectiveFunInit(U_obs):
-    return U_obs[0, 0] + U_obs[1, 1] + U_obs[2, 2]
 
 def targetPositionIncycolpean(input_withoutOffset):
     xL = input_withoutOffset[0]
@@ -909,45 +687,6 @@ def getNextBestPositionofFeature(input_withoutOffset, delta):
     # delta_norm[0] = 0
     targetPositionCyNext = targetPositionCy - 0.25 * delta_norm  #0.25
     return targetPositionCy, targetPositionCyNext
-
-
-def nextBestCameraPosition(agent, delta):
-    # need Rwc twc=tws
-    R_c_s = R_s_c.T
-
-    R_w_s = quaternion.as_rotation_matrix(agent.get_state().sensor_states["left_sensor"].rotation)
-    R_w_c = R_w_s.dot(R_s_c)  # R_w_c
-    R_s_w = R_w_s.T
-    t_w_s = agent.state.sensor_states["left_sensor"].position
-
-    t_s_w = -R_s_w.dot(t_w_s)
-
-    t_c_w = R_c_s.dot(t_s_w)
-
-    sum_delta = 0.25 * (delta / np.linalg.norm(delta))
-    print("sum_delta {0}".format(sum_delta))
-    NBCameraPosition = -R_w_c.dot(t_c_w - sum_delta)
-
-    return NBCameraPosition
-
-
-def getGradientRespectToTranslation(agent, targetPositionW, NBV):
-    R_w_s = quaternion.as_rotation_matrix(agent.get_state().sensor_states["left_sensor"].rotation)
-
-    t_w_s = agent.state.sensor_states["left_sensor"].position
-
-    R = R_w_s.dot(R_s_c)
-
-    sum_delta = np.zeros(3)
-
-    delta = 2 * (R.dot(NBV) - targetPositionW + t_w_s)
-
-    while (np.linalg.norm(sum_delta) < 0.25):
-        sum_delta += delta
-
-    return sum_delta
-
-
 
 
 if __name__ == "__main__":
