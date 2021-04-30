@@ -12,17 +12,34 @@ using namespace std;
 namespace AVP
 {
 
-long unsigned int Frame::nNextId=0;
-float Frame::cx, Frame::cy, Frame::fx, Frame::fy, Frame::invfx, Frame::invfy;
-
 Frame::Frame(){}
+
+//Copy Constructor
+Frame::Frame(const Frame &frame)
+    :mpORBextractorLeft(frame.mpORBextractorLeft), mpORBextractorRight(frame.mpORBextractorRight),
+     mTimeStamp(frame.mTimeStamp), mK(frame.mK.clone()), mDistCoef(frame.mDistCoef.clone()),
+     mbf(frame.mbf), mb(frame.mb), mThDepth(frame.mThDepth), N(frame.N), mvKeys(frame.mvKeys),
+     mvKeysRight(frame.mvKeysRight), mvKeysUn(frame.mvKeysUn),  mvuRight(frame.mvuRight),mvKPs(frame.mvKPs),
+     //mvKeyPointsObsCovariance(frame.mvKeyPointsObsCovariance), mvKeyPointsPostCovariance(frame.mvKeyPointsPostCovariance),
+     //mvmatchedNewKeypointsIndex(frame.mvmatchedNewKeypointsIndex),
+     mvDepth(frame.mvDepth),mnMinX(frame.mnMinX), mnMaxX(frame.mnMaxX), mnMinY(frame.mnMinY),mnMaxY(frame.mnMaxY),
+     mfGridElementWidthInv(frame.mfGridElementWidthInv), mfGridElementHeightInv(frame.mfGridElementHeightInv),
+     mDescriptors(frame.mDescriptors.clone()), mDescriptorsRight(frame.mDescriptorsRight.clone()), mnScaleLevels(frame.mnScaleLevels),
+     mfScaleFactor(frame.mfScaleFactor), mfLogScaleFactor(frame.mfLogScaleFactor),
+     mvScaleFactors(frame.mvScaleFactors), mvInvScaleFactors(frame.mvInvScaleFactors),
+     mvLevelSigma2(frame.mvLevelSigma2), mvInvLevelSigma2(frame.mvInvLevelSigma2)
+{
+    for(int i=0;i<FRAME_GRID_COLS;i++)
+        for(int j=0; j<FRAME_GRID_ROWS; j++)
+            mGrid[i][j]=frame.mGrid[i][j];
+
+    if(!frame.mTcw.empty())
+        SetPose(frame.mTcw);
+}
 
 Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeStamp, ORBextractor* extractorLeft, ORBextractor* extractorRight, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth)
         :mpORBextractorLeft(extractorLeft), mpORBextractorRight(extractorRight), mTimeStamp(timeStamp), mK(K.clone()),mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth)
 {
-    // Frame ID
-    mnId=nNextId++;
-
     // Scale Level Info
     mnScaleLevels = mpORBextractorLeft->GetLevels();
     mfScaleFactor = mpORBextractorLeft->GetScaleFactor();
@@ -39,6 +56,8 @@ Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeSt
 
     
     N = mvKeys.size();
+    cout<<"Extract "<< N <<" KeyPoints in this frame"<<endl;
+    mvmatchedNewKeypointsIndex = vector<int>(N, -1);
 
     if(mvKeys.empty())
         return;
@@ -48,18 +67,21 @@ Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeSt
         mvKeysUn=mvKeys;
     }
 
-    fx = K.at<float>(0,0);
-    fy = K.at<float>(1,1);
-    cx = K.at<float>(0,2);
-    cy = K.at<float>(1,2);
-    invfx = 1.0f/fx;
-    invfy = 1.0f/fy;
-
-    mb = mbf/fx;
-
-    
+  
     ComputeStereoMatches();
+    
+    // This is done only for the first Frame (or after a change in the calibration)
 
+    ComputeImageBounds(imLeft);
+
+    mfGridElementWidthInv=static_cast<float>(FRAME_GRID_COLS)/(mnMaxX-mnMinX);
+    mfGridElementHeightInv=static_cast<float>(FRAME_GRID_ROWS)/(mnMaxY-mnMinY);
+
+    AssignFeaturesToGrid();
+
+    // mvmatchedNewKeypointsIndex = vector<int>(N, -1);
+    // mvKeyPointsObsCovariance = vector<Eigen::Matrix3d>(N, Eigen::Matrix3d::Zero());
+    // mvKeyPointsPostCovariance = vector<Eigen::Matrix3d>(N, Eigen::Matrix3d::Zero());
 }
 
 cv::Mat Frame::GetPose()
@@ -67,6 +89,7 @@ cv::Mat Frame::GetPose()
 
     return mTcw.clone();
 }
+
 
 cv::Mat Frame::GetPoseInverse()
 {
@@ -160,7 +183,7 @@ void Frame::ComputeStereoMatches()
         if(maxU<0)
             continue;
 
-        int bestDist = 100; //SET :TH_HIGH;
+        int bestDist = 90; //SET :TH_HIGH;
         size_t bestIdxR = 0;
 
         const cv::Mat &dL = mDescriptors.row(iL);
@@ -283,16 +306,15 @@ void Frame::ComputeStereoMatches()
     for(int iL = 0; iL < N; iL++)
     {
         const cv::KeyPoint &kpL = mvKeys[iL];
-        const int &levelL = kpL.octave;
-        const float &vL = kpL.pt.y;
-        const float &uL = kpL.pt.x;
-
-        mvKPs[iL].resize(3);
-        mvKPs[iL][0] = uL;
-        mvKPs[iL][1] = vL;
-        mvKPs[iL][2] = levelL;
+        mvKPs[iL].x = kpL.pt.x;
+        mvKPs[iL].y = kpL.pt.y;
+        mvKPs[iL].size = kpL.size;
+        mvKPs[iL].angle = kpL.angle;
+        mvKPs[iL].response = kpL.response;
+        mvKPs[iL].octave = kpL.octave;
+        mvKPs[iL].class_id = kpL.class_id;
     }
-
+    
 }
 
 int Frame::DescriptorDistance(const cv::Mat &a, const cv::Mat &b)
@@ -327,5 +349,134 @@ void Frame::SetPose(cv::Mat Tcw)
     UpdatePoseMatrices();
 }
 
+//set left camera pose from AI Habitat
+void Frame::SetPoseFromHabitat(Eigen::Matrix3d Rwc, Eigen::Vector3d twc)
+{
+    mRwc = Converter::toCvMat(Rwc);
+    mRcw = mRwc.t();
+    mtwc = Converter::toCvMat(twc);
+    mtcw = -mRcw*mtwc;
+
+    mTcw = cv::Mat::eye(4,4,CV_32F);
+    mTcw.rowRange(0,3).colRange(0,3) = mRcw;
+    mTcw.rowRange(0,3).col(3) = mtcw;
+
+}
+
+void Frame::ComputeImageBounds(const cv::Mat &imLeft)
+{
+    if(mDistCoef.at<float>(0)!=0.0)
+    {
+        cv::Mat mat(4,2,CV_32F);
+        mat.at<float>(0,0)=0.0; mat.at<float>(0,1)=0.0;
+        mat.at<float>(1,0)=imLeft.cols; mat.at<float>(1,1)=0.0;
+        mat.at<float>(2,0)=0.0; mat.at<float>(2,1)=imLeft.rows;
+        mat.at<float>(3,0)=imLeft.cols; mat.at<float>(3,1)=imLeft.rows;
+
+        // Undistort corners
+        mat=mat.reshape(2);
+        cv::undistortPoints(mat,mat,mK,mDistCoef,cv::Mat(),mK);
+        mat=mat.reshape(1);
+
+        mnMinX = min(mat.at<float>(0,0),mat.at<float>(2,0));
+        mnMaxX = max(mat.at<float>(1,0),mat.at<float>(3,0));
+        mnMinY = min(mat.at<float>(0,1),mat.at<float>(1,1));
+        mnMaxY = max(mat.at<float>(2,1),mat.at<float>(3,1));
+
+    }
+    else
+    {
+        mnMinX = 0.0f;
+        mnMaxX = imLeft.cols;
+        mnMinY = 0.0f;
+        mnMaxY = imLeft.rows;
+    }
+}
+
+vector<size_t> Frame::GetFeaturesInArea(const float &x, const float  &y, const float  &r, const int minLevel, const int maxLevel) const
+{
+    vector<size_t> vIndices;
+    vIndices.reserve(N);
+
+    const int nMinCellX = max(0,(int)floor((x-mnMinX-r)*mfGridElementWidthInv));
+    if(nMinCellX>=FRAME_GRID_COLS)
+        return vIndices;
+
+    const int nMaxCellX = min((int)FRAME_GRID_COLS-1,(int)ceil((x-mnMinX+r)*mfGridElementWidthInv));
+    if(nMaxCellX<0)
+        return vIndices;
+
+    const int nMinCellY = max(0,(int)floor((y-mnMinY-r)*mfGridElementHeightInv));
+    if(nMinCellY>=FRAME_GRID_ROWS)
+        return vIndices;
+
+    const int nMaxCellY = min((int)FRAME_GRID_ROWS-1,(int)ceil((y-mnMinY+r)*mfGridElementHeightInv));
+    if(nMaxCellY<0)
+        return vIndices;
+
+    const bool bCheckLevels = (minLevel>=0) || (maxLevel>=0); //I think there is a bug in orbslam2
+
+    for(int ix = nMinCellX; ix<=nMaxCellX; ix++)
+    {
+        for(int iy = nMinCellY; iy<=nMaxCellY; iy++)
+        {
+            const vector<size_t> vCell = mGrid[ix][iy];
+            if(vCell.empty())
+                continue;
+
+            for(size_t j=0, jend=vCell.size(); j<jend; j++)
+            {
+                const cv::KeyPoint &kpUn = mvKeysUn[vCell[j]];
+                if(bCheckLevels)
+                {
+                    if(kpUn.octave<minLevel)
+                        continue;
+                    if(maxLevel>=0)
+                        if(kpUn.octave>maxLevel)
+                            continue;
+                }
+
+                const float distx = kpUn.pt.x-x;
+                const float disty = kpUn.pt.y-y;
+
+                if(fabs(distx)<r && fabs(disty)<r)
+                    vIndices.push_back(vCell[j]);
+            }
+        }
+    }
+
+    return vIndices;
+}
+
+
+bool Frame::PosInGrid(const cv::KeyPoint &kp, int &posX, int &posY)
+{
+    posX = round((kp.pt.x-mnMinX)*mfGridElementWidthInv);
+    posY = round((kp.pt.y-mnMinY)*mfGridElementHeightInv);
+
+    //Keypoint's coordinates are undistorted, which could cause to go out of the image
+    if(posX<0 || posX>=FRAME_GRID_COLS || posY<0 || posY>=FRAME_GRID_ROWS)
+        return false;
+
+    return true;
+}
+
+
+void Frame::AssignFeaturesToGrid()
+{
+    int nReserve = 0.5f*N/(FRAME_GRID_COLS*FRAME_GRID_ROWS);
+    for(unsigned int i=0; i<FRAME_GRID_COLS;i++)
+        for (unsigned int j=0; j<FRAME_GRID_ROWS;j++)
+            mGrid[i][j].reserve(nReserve);
+
+    for(int i=0;i<N;i++)
+    {
+        const cv::KeyPoint &kp = mvKeysUn[i];
+
+        int nGridPosX, nGridPosY;
+        if(PosInGrid(kp,nGridPosX,nGridPosY))
+            mGrid[nGridPosX][nGridPosY].push_back(i);
+    }
+}
 
 }// end AVP

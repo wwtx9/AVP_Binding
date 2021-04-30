@@ -24,7 +24,7 @@ namespace AVP {
     {
         cv::Mat imLeft = numpy_uint8_3c_to_cv_mat(imLeftpy);
         cv::Mat imRight = numpy_uint8_3c_to_cv_mat(imRightpy);
-        mpSparsePipline->GrabImageStereo(imLeft, imRight, timestamp);
+        mpSparsePipline->GrabImageStereo(imLeft, imRight, timestamp); //Get mcurrentframe after orb feature extraction
     }
 
     Eigen::Matrix3d System::testEigen(const Eigen::Matrix3d &m1,const Eigen::Matrix3d &m2)

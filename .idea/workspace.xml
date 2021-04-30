@@ -13,13 +13,11 @@
   <component name="ChangeListManager">
     <list default="true" id="a0de68a1-d0a8-4512-97bd-37ddb274d985" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/include/Frame.h" beforeDir="false" afterPath="$PROJECT_DIR$/include/Frame.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/include/SparsePipeline.h" beforeDir="false" afterPath="$PROJECT_DIR$/include/SparsePipeline.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/include/System.h" beforeDir="false" afterPath="$PROJECT_DIR$/include/System.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/app/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/CMakeLists.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/app/Frame.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/Frame.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/app/SparsePipeline.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/SparsePipeline.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/app/System.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/System.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/bindings/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/src/bindings/CMakeLists.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/bindings/bindings.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/bindings/bindings.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -60,22 +58,12 @@
     <property name="nodejs_package_manager_path" value="npm" />
   </component>
   <component name="RunManager" selected="CMake Application.stereo_kitti">
-    <configuration default="true" type="CLionExternalRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" PASS_PARENT_ENVS_2="true">
-      <method v="2">
-        <option name="CLION.EXTERNAL.BUILD" enabled="true" />
-      </method>
-    </configuration>
     <configuration name="AVP" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS="Examples/KITTI/KITTI.yaml $PROJECT_DIR$/../dataset/KITTI/data_scene_flow/training/image_2 $PROJECT_DIR$/../dataset/KITTI/data_scene_flow/training/image_3 Examples/KITTI/times.txt" REDIRECT_INPUT="false" ELEVATE="false" WORKING_DIR="file://$PROJECT_DIR$" PASS_PARENT_ENVS_2="true" PROJECT_NAME="AVP_Binding" TARGET_NAME="AVP" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="AVP_Binding" RUN_TARGET_NAME="euroc">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
     <configuration name="AVP_Binding" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="AVP_Binding" TARGET_NAME="AVP_Binding" CONFIG_NAME="Debug">
-      <method v="2">
-        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
-      </method>
-    </configuration>
-    <configuration default="true" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" PASS_PARENT_ENVS_2="true">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
@@ -130,6 +118,8 @@
       <workItem from="1612406185810" duration="3467000" />
       <workItem from="1612411158302" duration="4827000" />
       <workItem from="1612654532269" duration="10508000" />
+      <workItem from="1618161567481" duration="1970000" />
+      <workItem from="1618167432489" duration="7000" />
     </task>
     <servers />
   </component>
